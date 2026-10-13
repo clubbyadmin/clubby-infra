@@ -1,0 +1,13 @@
+# Os dois repositórios de código ficam clonados aqui dentro, mas são repos próprios.
+clubby-api/
+clubby-web/
+
+# Dependências soltas na raiz (resquício; a API já declara @nestjs/swagger)
+node_modules/
+package.json
+package-lock.json
+
+# Segredos do deploy
+deploy/.env
+
+.vscode/

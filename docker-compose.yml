@@ -1,0 +1,117 @@
+name: clubby
+
+x-api-build: &api-build
+  context: ./clubby-api
+  dockerfile: Dockerfile
+
+x-web-build: &web-build
+  context: ./clubby-web
+  dockerfile: Dockerfile
+
+services:
+  postgres-demo:
+    image: postgres:16-alpine
+    profiles: [demo]
+    environment:
+      POSTGRES_DB: clubby_demo
+      POSTGRES_USER: clubby
+      POSTGRES_PASSWORD: ${POSTGRES_DEMO_PASSWORD:-clubby-demo}
+    volumes:
+      - clubby_demo_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clubby -d clubby_demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api-demo:
+    build: *api-build
+    profiles: [demo]
+    depends_on:
+      postgres-demo:
+        condition: service_healthy
+    environment:
+      APP_ENV: demo
+      NODE_ENV: production
+      PORT: 3000
+      CLUBBY_DOMAIN: ${CLUBBY_DOMAIN:-clubby.com.br}
+      CORS_ORIGINS: https://demo.${CLUBBY_DOMAIN:-clubby.com.br},http://localhost:3001
+      DATABASE_URL: postgresql://clubby:${POSTGRES_DEMO_PASSWORD:-clubby-demo}@postgres-demo:5432/clubby_demo?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET_DEMO:-clubby-demo-jwt-secret}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-admin123}
+      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-clubby-admin}
+      WHATSAPP_MOCK: "true"
+      WHATSAPP_SCHEDULER: "false"
+      ALLOW_TEST_TOOLS: "true"
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
+  web-demo:
+    build:
+      <<: *web-build
+      args:
+        NEXT_PUBLIC_API_URL: ${DEMO_API_PUBLIC_URL:-http://localhost:3000}
+        NEXT_PUBLIC_APP_MODE: demo
+    profiles: [demo]
+    depends_on:
+      - api-demo
+    environment:
+      NEXT_PUBLIC_API_URL: ${DEMO_API_PUBLIC_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_MODE: demo
+    ports:
+      - "127.0.0.1:3001:3001"
+    restart: unless-stopped
+
+  api:
+    build: *api-build
+    profiles: [prod]
+    environment:
+      APP_ENV: production
+      NODE_ENV: production
+      PORT: 3000
+      CLUBBY_DOMAIN: ${CLUBBY_DOMAIN:-clubby.com.br}
+      CORS_ORIGINS: https://app.${CLUBBY_DOMAIN:-clubby.com.br},https://${CLUBBY_DOMAIN:-clubby.com.br}
+      DATABASE_URL: ${DATABASE_URL_PROD:-}
+      JWT_SECRET: ${JWT_SECRET_PROD:-}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
+      WHATSAPP_MOCK: "false"
+    ports:
+      - "127.0.0.1:3002:3000"
+    restart: unless-stopped
+
+  web:
+    build:
+      <<: *web-build
+      args:
+        NEXT_PUBLIC_API_URL: ${PROD_API_PUBLIC_URL:-https://api.clubby.com.br}
+        NEXT_PUBLIC_APP_MODE: production
+    profiles: [prod]
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_APP_MODE: production
+    ports:
+      - "127.0.0.1:3003:3001"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: [proxy]
+    environment:
+      CLUBBY_DOMAIN: ${CLUBBY_DOMAIN:-clubby.com.br}
+      CADDY_EMAIL: ${CADDY_EMAIL:-admin@clubby.com.br}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - clubby_caddy_data:/data
+      - clubby_caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  clubby_demo_pg:
+  clubby_caddy_data:
+  clubby_caddy_config:

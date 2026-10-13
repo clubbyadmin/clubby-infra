@@ -1,0 +1,31 @@
+{
+	email {$CADDY_EMAIL}
+}
+
+demo.{$CLUBBY_DOMAIN} {
+	encode gzip
+	reverse_proxy web-demo:3001
+}
+
+api-demo.{$CLUBBY_DOMAIN} {
+	encode gzip
+	reverse_proxy api-demo:3000
+}
+
+app.{$CLUBBY_DOMAIN} {
+	encode gzip
+	reverse_proxy web:3001
+}
+
+api.{$CLUBBY_DOMAIN} {
+	encode gzip
+	reverse_proxy api:3000
+}
+
+www.{$CLUBBY_DOMAIN} {
+	redir https://app.{$CLUBBY_DOMAIN}{uri}
+}
+
+{$CLUBBY_DOMAIN} {
+	redir https://app.{$CLUBBY_DOMAIN}{uri}
+}
