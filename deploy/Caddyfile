@@ -2,30 +2,16 @@
 	email {$CADDY_EMAIL}
 }
 
-demo.{$CLUBBY_DOMAIN} {
-	encode gzip
-	reverse_proxy web-demo:3001
-}
-
+# API da demonstração (banco mock no próprio VPS)
 api-demo.{$CLUBBY_DOMAIN} {
 	encode gzip
 	reverse_proxy api-demo:3000
 }
 
-app.{$CLUBBY_DOMAIN} {
-	encode gzip
-	reverse_proxy web:3001
-}
-
+# API de produção (Neon · main)
 api.{$CLUBBY_DOMAIN} {
 	encode gzip
 	reverse_proxy api:3000
 }
 
-www.{$CLUBBY_DOMAIN} {
-	redir https://app.{$CLUBBY_DOMAIN}{uri}
-}
-
-{$CLUBBY_DOMAIN} {
-	redir https://app.{$CLUBBY_DOMAIN}{uri}
-}
+# O front-end (demo. e app.) é servido pela Vercel, não passa por aqui.

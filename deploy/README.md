@@ -1,73 +1,106 @@
 # Hospedagem Clubby — demo e produção
 
-Duas frentes no mesmo domínio:
+## Arquitetura
 
-| Frente | URL | O que é |
+```
+                 Cloudflare (DNS)
+                       │
+   ┌───────────────────┼─────────────────────┐
+   │                   │                     │
+ demo.seudominio    app.seudominio      api-demo. / api.
+   │                   │                     │
+   ▼                   ▼                     ▼
+ Vercel             Vercel          AWS Lightsail · São Paulo
+ (clubby-web,       (clubby-web,    ┌──────────────────────────┐
+  modo demo)         modo prod)     │ Caddy (HTTPS)            │
+                                    │ api-demo ─► postgres-demo│  dados mock
+                                    │ api      ─► Neon · main  │  produção
+                                    └──────────────────────────┘
+```
+
+| Frente | Front | API | Banco |
+| --- | --- | --- | --- |
+| Demonstração | `demo.` (Vercel) | `api-demo.` (VPS) | Postgres no VPS, mock |
+| Produção | `app.` (Vercel) | `api.` (VPS) | Neon · branch `main` |
+
+Lightsail em `sa-east-1` fica na mesma região do Neon: latência API↔banco mínima.
+
+## 1. VPS — AWS Lightsail
+
+1. [lightsail.aws.amazon.com](https://lightsail.aws.amazon.com) → **Create instance**.
+2. Região **São Paulo (sa-east-1)**. Plataforma Linux. Blueprint **OS only → Ubuntu 24.04**.
+3. Plano: **2 GB RAM** é o mínimo confortável para duas APIs + Postgres + Caddy (≈ US$ 12/mês). 4 GB se quiser folga.
+4. Nome `clubby-api`. Create.
+5. Em **Networking** da instância: crie um **Static IP** e anexe. Anote o IP.
+6. Ainda em Networking → **IPv4 Firewall**: adicione **HTTPS (443)**. SSH (22) e HTTP (80) já vêm abertos.
+
+Conecte (botão **Connect using SSH** no painel, ou baixe a chave e use `ssh -i chave.pem ubuntu@IP`) e instale o Docker:
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker ubuntu
+exit   # reconecte para o grupo valer
+```
+
+## 2. DNS — Cloudflare
+
+Em **DNS → Records** do domínio, crie (todos com **Proxy status = DNS only**, nuvem cinza, pelo menos até tudo funcionar):
+
+| Tipo | Nome | Conteúdo |
 | --- | --- | --- |
-| Demonstração | `https://demo.seudominio` | Dados mock, WhatsApp falso, banco isolado. Serve para apresentar a clientes. |
-| Produção | `https://app.seudominio` | Ambiente real (Neon/Postgres de produção). Sem seed automático. |
+| A | `api` | IP estático do Lightsail |
+| A | `api-demo` | IP estático do Lightsail |
+| CNAME | `app` | `cname.vercel-dns.com` |
+| CNAME | `demo` | `cname.vercel-dns.com` |
 
-APIs: `https://api-demo.seudominio` e `https://api.seudominio`.
+`@` e `www` podem apontar para a Vercel também (CNAME) ou para uma landing page futura.
 
-## 1. DNS
+Depois que tudo estiver no ar, pode ligar o proxy laranja em `api` e `api-demo`; aí ajuste **SSL/TLS → Full (strict)** no Cloudflare.
 
-No provedor do domínio, aponte para o IP do VPS:
-
-```
-A     @              IP_DO_VPS
-A     www            IP_DO_VPS
-A     app            IP_DO_VPS
-A     api            IP_DO_VPS
-A     demo           IP_DO_VPS
-A     api-demo       IP_DO_VPS
-```
-
-## 2. Configurar o servidor
+## 3. API no VPS
 
 ```bash
+git clone git@github.com:clubbyadmin/clubby-infra.git clubby
+cd clubby
+git clone git@github.com:clubbyadmin/clubby-api.git
 cp deploy/.env.example deploy/.env
-# edite CLUBBY_DOMAIN, senhas, DATABASE_URL_PROD e CADDY_EMAIL
+nano deploy/.env        # domínio, segredos, DATABASE_URL_PROD (Neon · main)
+
+docker compose --env-file deploy/.env --profile demo --profile prod --profile proxy up --build -d
+docker compose logs -f api api-demo   # Ctrl+C para sair
 ```
 
-Na raiz do projeto (`clubby/`):
+Para o `git clone` por SSH funcionar no VPS, gere uma chave lá (`ssh-keygen -t ed25519`) e cadastre a pública como **Deploy key** nos repos `clubby-infra` e `clubby-api` no GitHub. Alternativa: clone por HTTPS se os repos forem públicos.
+
+Teste: `https://api.seudominio/health` e `https://api-demo.seudominio/health` devem responder `{"ok":true,...}`.
+
+Atualizar depois:
 
 ```bash
-# só a demonstração (também funciona em localhost, sem DNS)
-docker compose --env-file deploy/.env --profile demo up --build -d
-
-# produção + HTTPS (precisa do DNS apontando)
-docker compose --env-file deploy/.env --profile prod --profile proxy up --build -d
-
-# as duas frentes no mesmo VPS
-docker compose --env-file deploy/.env --profile demo --profile prod --profile proxy up --build -d
+cd ~/clubby/clubby-api && git pull && cd .. && docker compose --env-file deploy/.env --profile demo --profile prod --profile proxy up --build -d
 ```
 
-Caddy emite o certificado Let's Encrypt automaticamente.
+## 4. Front na Vercel — dois projetos, um repositório
 
-## 3. Apresentar agora, sem domínio
+Crie **dois projetos** na Vercel a partir do mesmo repo `clubbyadmin/clubby-web`:
 
-Com a API e o Next locais:
+### Projeto `clubby-web` (produção)
 
-1. Em `clubby-api/.env` acrescente `APP_ENV=demo`.
-2. Em `clubby-web/.env.local` acrescente `NEXT_PUBLIC_APP_MODE=demo`.
-3. Suba `npm run start:dev` (API) e `npm run dev` (web).
-4. Abra `http://localhost:3001/login`.
+- **Framework:** Next.js (detectado). Root directory: `/`.
+- **Environment Variables:**
+  - `NEXT_PUBLIC_API_URL` = `https://api.seudominio`
+  - `NEXT_PUBLIC_APP_MODE` = `production`
+- **Domains:** adicione `app.seudominio`.
 
-Logins da demo:
+### Projeto `clubby-web-demo` (demonstração)
 
-- Super-Admin: `admin@clubby.com.br`
-- Gestor: `admin@demo-barber.clubby`
-- Recepção: `recepcao@demo-barber.clubby`
+- Mesmo repo, mesma branch `main`.
+- **Environment Variables:**
+  - `NEXT_PUBLIC_API_URL` = `https://api-demo.seudominio`
+  - `NEXT_PUBLIC_APP_MODE` = `demo`
+- **Domains:** adicione `demo.seudominio`.
 
-A senha padrão do catálogo demo é `clubby-admin` (Super-Admin usa a senha configurada em `SUPER_ADMIN_PASSWORD`, padrão local `admin123`).
-
-A loja pública mock fica em `/demo-barber`.
-
-## 4. O que muda entre os ambientes
-
-**Demo:** seed do Studio + tenant `demo-barber`, WhatsApp MOCK, `/test-tools/seed` liberado, faixa “Ambiente de demonstração”, atalhos no login.
-
-**Produção:** sem seed, sem test-tools, JWT e senha do Super-Admin obrigatórios, CORS só no domínio, Swagger desligado.
+Cada push em `main` publica os dois. Anote as URLs `*.vercel.app` de cada projeto e coloque em `DEMO_CORS_ORIGINS` / `PROD_CORS_ORIGINS` no `deploy/.env` do VPS.
 
 ## 5. Bancos de dados: quem aponta para onde
 
@@ -85,8 +118,16 @@ vai para o git, e a API de produção aplica o mesmo arquivo com
 Para "zerar" o `development` para o estado atual da produção: no Neon, apague o
 branch e crie outro a partir do `main`; depois atualize o `.env` local.
 
-## 6. Primeiro deploy de produção
+## 6. Primeiro acesso em produção
 
 O banco de produção não recebe seed automático. A API roda
-`prisma migrate deploy` na subida do container, então o schema fica em dia
-sozinho; o primeiro tenant real é criado pelo Super-Admin no painel.
+`prisma migrate deploy` ao subir, então o schema fica em dia sozinho. Entre em
+`app.seudominio/login` como `admin@clubby.com.br` com a `SUPER_ADMIN_PASSWORD`
+do `deploy/.env` e crie o primeiro parceiro pelo painel.
+
+## 7. Apresentar antes de tudo isso existir
+
+Localmente já funciona em modo demo: `APP_ENV=demo` em `clubby-api/.env`,
+`NEXT_PUBLIC_APP_MODE=demo` em `clubby-web/.env.local`, e abra
+`http://localhost:3001/login`. Logins: `admin@clubby.com.br`,
+`admin@demo-barber.clubby` / `clubby-admin`. Loja mock em `/demo-barber`.

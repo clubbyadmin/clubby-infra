@@ -1,11 +1,13 @@
 name: clubby
 
+# Roda no VPS (AWS Lightsail, São Paulo). O front-end fica na Vercel.
+#
+#   --profile demo   → postgres-demo + api-demo   (dados mock)
+#   --profile prod   → api                         (Neon · main)
+#   --profile proxy  → caddy (HTTPS para api-demo. e api.)
+
 x-api-build: &api-build
   context: ./clubby-api
-  dockerfile: Dockerfile
-
-x-web-build: &web-build
-  context: ./clubby-web
   dockerfile: Dockerfile
 
 services:
@@ -36,7 +38,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       CLUBBY_DOMAIN: ${CLUBBY_DOMAIN:-clubby.com.br}
-      CORS_ORIGINS: https://demo.${CLUBBY_DOMAIN:-clubby.com.br},http://localhost:3001
+      CORS_ORIGINS: ${DEMO_CORS_ORIGINS:-}
       DATABASE_URL: postgresql://clubby:${POSTGRES_DEMO_PASSWORD:-clubby-demo}@postgres-demo:5432/clubby_demo?sslmode=disable
       JWT_SECRET: ${JWT_SECRET_DEMO:-clubby-demo-jwt-secret}
       SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-admin123}
@@ -44,24 +46,8 @@ services:
       WHATSAPP_MOCK: "true"
       WHATSAPP_SCHEDULER: "false"
       ALLOW_TEST_TOOLS: "true"
-    ports:
-      - "127.0.0.1:3000:3000"
-    restart: unless-stopped
-
-  web-demo:
-    build:
-      <<: *web-build
-      args:
-        NEXT_PUBLIC_API_URL: ${DEMO_API_PUBLIC_URL:-http://localhost:3000}
-        NEXT_PUBLIC_APP_MODE: demo
-    profiles: [demo]
-    depends_on:
-      - api-demo
-    environment:
-      NEXT_PUBLIC_API_URL: ${DEMO_API_PUBLIC_URL:-http://localhost:3000}
-      NEXT_PUBLIC_APP_MODE: demo
-    ports:
-      - "127.0.0.1:3001:3001"
+    expose:
+      - "3000"
     restart: unless-stopped
 
   api:
@@ -72,28 +58,13 @@ services:
       NODE_ENV: production
       PORT: 3000
       CLUBBY_DOMAIN: ${CLUBBY_DOMAIN:-clubby.com.br}
-      CORS_ORIGINS: https://app.${CLUBBY_DOMAIN:-clubby.com.br},https://${CLUBBY_DOMAIN:-clubby.com.br}
+      CORS_ORIGINS: ${PROD_CORS_ORIGINS:-}
       DATABASE_URL: ${DATABASE_URL_PROD:-}
       JWT_SECRET: ${JWT_SECRET_PROD:-}
       SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
       WHATSAPP_MOCK: "false"
-    ports:
-      - "127.0.0.1:3002:3000"
-    restart: unless-stopped
-
-  web:
-    build:
-      <<: *web-build
-      args:
-        NEXT_PUBLIC_API_URL: ${PROD_API_PUBLIC_URL:-https://api.clubby.com.br}
-        NEXT_PUBLIC_APP_MODE: production
-    profiles: [prod]
-    depends_on:
-      - api
-    environment:
-      NEXT_PUBLIC_APP_MODE: production
-    ports:
-      - "127.0.0.1:3003:3001"
+    expose:
+      - "3000"
     restart: unless-stopped
 
   caddy:
