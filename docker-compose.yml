@@ -46,6 +46,9 @@ services:
       WHATSAPP_MOCK: "true"
       WHATSAPP_SCHEDULER: "false"
       ALLOW_TEST_TOOLS: "true"
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
     expose:
       - "3000"
     restart: unless-stopped
@@ -63,6 +66,9 @@ services:
       JWT_SECRET: ${JWT_SECRET_PROD:-}
       SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
       WHATSAPP_MOCK: "false"
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
     expose:
       - "3000"
     restart: unless-stopped
