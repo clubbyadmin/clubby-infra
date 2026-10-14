@@ -69,8 +69,24 @@ A loja pública mock fica em `/demo-barber`.
 
 **Produção:** sem seed, sem test-tools, JWT e senha do Super-Admin obrigatórios, CORS só no domínio, Swagger desligado.
 
-## 5. Primeiro deploy de produção
+## 5. Bancos de dados: quem aponta para onde
 
-O banco de produção não é preenchido sozinho. Use o Neon (ou Postgres) já migrado:
+| Ambiente | Banco | Observação |
+| --- | --- | --- |
+| Sua máquina | Neon · branch `development` | Sandbox. Pode criar, apagar, testar à vontade. |
+| Demo (`demo.`) | Postgres no Docker do VPS | Mock, isolado, recriado pelo seed. |
+| Produção (`app.`) | Neon · branch `main` | Dados reais. Só a API do VPS conecta aqui. |
 
-A API roda `prisma migrate deploy` na subida do container.
+Dados **não** viajam entre bancos. O que viaja é código: uma mudança de schema
+nasce localmente com `prisma migrate dev` (arquivo em `prisma/migrations/`),
+vai para o git, e a API de produção aplica o mesmo arquivo com
+`prisma migrate deploy` ao subir o container.
+
+Para "zerar" o `development` para o estado atual da produção: no Neon, apague o
+branch e crie outro a partir do `main`; depois atualize o `.env` local.
+
+## 6. Primeiro deploy de produção
+
+O banco de produção não recebe seed automático. A API roda
+`prisma migrate deploy` na subida do container, então o schema fica em dia
+sozinho; o primeiro tenant real é criado pelo Super-Admin no painel.
