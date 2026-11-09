@@ -118,12 +118,15 @@ vai para o git, e a API de produção aplica o mesmo arquivo com
 Para "zerar" o `development` para o estado atual da produção: no Neon, apague o
 branch e crie outro a partir do `main`; depois atualize o `.env` local.
 
-## 6. Primeiro acesso em produção
+## 6. Primeiro acesso e deploy de produção
 
-O banco de produção não recebe seed automático. A API roda
-`prisma migrate deploy` ao subir, então o schema fica em dia sozinho. Entre em
-`app.seudominio/login` como `admin@clubby.com.br` com a `SUPER_ADMIN_PASSWORD`
-do `deploy/.env` e crie o primeiro parceiro pelo painel.
+O banco de produção não recebe seed de catálogo. A API aplica
+`prisma migrate deploy` ao subir e faz bootstrap do `admin@clubby.com.br`.
+
+Guia completo (portas de acesso, MFA, SMTP, rebuild da API, Vercel e
+checklist do primeiro salão):
+
+→ **[PRODUCAO.md](./PRODUCAO.md)**
 
 ## 7. Apresentar antes de tudo isso existir
 
