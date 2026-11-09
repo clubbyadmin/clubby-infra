@@ -59,10 +59,16 @@ Não existe auto-login em produção. Sem sessão válida, `/admin` manda para `
 2. Configura SMTP + SUPER_ADMIN_PASSWORD + JWT (seção 5)
 3. Entra como admin@clubby.com.br
 4. Barbeiro (ou você) preenche /parceiro  →  tenant PENDING
-5. Você aprova no /super-admin          →  tenant ACTIVE
-6. Gestor entra com o e-mail cadastrado →  /admin
-7. Cliente usa /{slug}
+5. Você abre a ficha em /super-admin/parceiros/{id}
+   (dados do estabelecimento, responsável, CEP e contrato SaaS)
+6. Gera / registra o contrato e aprova → tenant ACTIVE
+7. Gestor entra com o e-mail cadastrado →  /admin
+8. Cliente usa /{slug}
 ```
+
+A lista em `/super-admin` só resume. A ficha completa (cadastro + contrato
+imprimível/PDF) fica em `/super-admin/parceiros/{id}` — clique no nome ou
+use **Abrir ficha do cliente**.
 
 Checklist mínimo no painel do salão depois de ACTIVE:
 
