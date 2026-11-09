@@ -177,15 +177,19 @@ Modelo: `deploy/.env.example` e `clubby-api/.env.example`.
 
 Sem SMTP em produção: login da gestão e código de e-mail do cliente **travam**.
 
-OAuth (opcional, recomendado para cliente):
+OAuth do cliente (Google / Apple / Microsoft) — recomendado em produção:
+
+No `deploy/.env` da API:
 
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
 - `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET`
 - `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY`
 
-Callback em cada provedor:
+Callback registrado em **cada** provedor (URI de redirecionamento):
 
 `https://api.clubby.com.br/auth/customer/callback`
+
+Sem essas chaves, os botões Google/Apple/Microsoft mostram erro na hora de abrir; o e-mail com código SMTP continua funcionando.
 
 Asaas (só se o clube online entrar no piloto):
 
