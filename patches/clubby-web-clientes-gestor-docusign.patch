@@ -1,0 +1,2142 @@
+diff --git a/app/admin/clientes/clientes-board.tsx b/app/admin/clientes/clientes-board.tsx
+index 06f00c5..fc04120 100644
+--- a/app/admin/clientes/clientes-board.tsx
++++ b/app/admin/clientes/clientes-board.tsx
+@@ -23,9 +23,13 @@ import {
+   Camera,
+   Clock3,
+   Loader2,
++  Pencil,
+   Plus,
+   Search,
+   Sparkles,
++  Trash2,
++  UserCheck,
++  UserMinus,
+   UserRound,
+   Users,
+   X,
+@@ -101,6 +105,7 @@ export function ClientesBoard() {
+   const [reminders, setReminders] = useState<ApiReminder[]>([]);
+   const [search, setSearch] = useState("");
+   const [debouncedSearch, setDebouncedSearch] = useState("");
++  const [showInactive, setShowInactive] = useState(false);
+   const [reminderFilter, setReminderFilter] = useState<ReminderFilter>("ALL");
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState<string | null>(null);
+@@ -161,9 +166,14 @@ export function ClientesBoard() {
+     setLoading(true);
+     setError(null);
+ 
++    const clientListParams = {
++      tenantId,
++      includeInactive: showInactive,
++    };
++
+     try {
+       const [allClients, reminderList] = await Promise.all([
+-        api.getClients({ tenantId }),
++        api.getClients(clientListParams),
+         api.getReminders({ tenantId }),
+       ]);
+ 
+@@ -172,7 +182,10 @@ export function ClientesBoard() {
+ 
+       if (debouncedSearch) {
+         setClients(
+-          await api.getClients({ tenantId, q: debouncedSearch }),
++          await api.getClients({
++            ...clientListParams,
++            q: debouncedSearch,
++          }),
+         );
+       } else {
+         setClients(allClients);
+@@ -185,7 +198,7 @@ export function ClientesBoard() {
+     } finally {
+       setLoading(false);
+     }
+-  }, [tenantId, debouncedSearch]);
++  }, [tenantId, debouncedSearch, showInactive]);
+ 
+   useEffect(() => {
+     if (!tenantId) {
+@@ -202,7 +215,7 @@ export function ClientesBoard() {
+     setError(null);
+ 
+     Promise.all([
+-      api.getClients({ tenantId }),
++      api.getClients({ tenantId, includeInactive: showInactive }),
+       api.getReminders({ tenantId }),
+     ])
+       .then(([clientsResponse, remindersResponse]) => {
+@@ -231,7 +244,7 @@ export function ClientesBoard() {
+     return () => {
+       cancelled = true;
+     };
+-  }, [tenantId]);
++  }, [tenantId, showInactive]);
+ 
+   const skipSearchEffect = useRef(true);
+ 
+@@ -251,6 +264,7 @@ export function ClientesBoard() {
+       .getClients({
+         tenantId,
+         q: debouncedSearch || undefined,
++        includeInactive: showInactive,
+       })
+       .then((response) => {
+         if (!cancelled) {
+@@ -266,7 +280,7 @@ export function ClientesBoard() {
+     return () => {
+       cancelled = true;
+     };
+-  }, [tenantId, debouncedSearch]);
++  }, [tenantId, debouncedSearch, showInactive]);
+ 
+   const birthdayThisMonth = useMemo(() => {
+     const month = new Date().getMonth();
+@@ -402,6 +416,16 @@ export function ClientesBoard() {
+     }
+   }
+ 
++  async function handleClientUpdated(updated: ApiClient) {
++    setSelectedClient(updated);
++    await loadBoard();
++  }
++
++  async function handleClientDeleted() {
++    setSelectedClient(null);
++    await loadBoard();
++  }
++
+   async function handleCreateReminder(event: React.FormEvent<HTMLFormElement>) {
+     event.preventDefault();
+ 
+@@ -451,7 +475,8 @@ export function ClientesBoard() {
+         <div>
+           <TenantBadge />
+           <p className="mt-3 text-sm text-zinc-400">
+-            Ficha, histórico e lembretes · {tenant.name}
++            Ficha, histórico e lembretes · {tenant.name}. Em rede, a base de
++            clientes é da matriz e vale em todas as unidades.
+           </p>
+         </div>
+ 
+@@ -544,7 +569,9 @@ export function ClientesBoard() {
+             <ClientsSection
+               clients={clients}
+               search={search}
++              showInactive={showInactive}
+               onSearch={setSearch}
++              onShowInactiveChange={setShowInactive}
+               onOpen={openHistory}
+             />
+           ) : (
+@@ -593,6 +620,8 @@ export function ClientesBoard() {
+           onReminderChange={setReminderForm}
+           onSubmitHistory={handleCreateHistory}
+           onSubmitReminder={handleCreateReminder}
++          onClientUpdated={handleClientUpdated}
++          onClientDeleted={handleClientDeleted}
+           onClose={() => setSelectedClient(null)}
+         />
+       ) : null}
+@@ -603,22 +632,37 @@ export function ClientesBoard() {
+ function ClientsSection({
+   clients,
+   search,
++  showInactive,
+   onSearch,
++  onShowInactiveChange,
+   onOpen,
+ }: {
+   clients: ApiClient[];
+   search: string;
++  showInactive: boolean;
+   onSearch: (value: string) => void;
++  onShowInactiveChange: (value: boolean) => void;
+   onOpen: (client: ApiClient) => void;
+ }) {
+   return (
+     <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
+       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+-        <div className="flex items-center gap-2">
+-          <Users className="size-4 text-[var(--accent)]" />
+-          <h2 className="text-sm font-semibold text-zinc-100">
+-            Base de clientes
+-          </h2>
++        <div className="flex flex-wrap items-center gap-3">
++          <div className="flex items-center gap-2">
++            <Users className="size-4 text-[var(--accent)]" />
++            <h2 className="text-sm font-semibold text-zinc-100">
++              Base de clientes
++            </h2>
++          </div>
++          <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-zinc-950 px-3 py-1.5 text-xs text-zinc-400 ring-1 ring-zinc-800">
++            <input
++              type="checkbox"
++              checked={showInactive}
++              onChange={(event) => onShowInactiveChange(event.target.checked)}
++              className="size-3.5 rounded border-zinc-600 bg-zinc-900 accent-[var(--accent)]"
++            />
++            Mostrar inativos
++          </label>
+         </div>
+ 
+         <label className="relative block w-full lg:max-w-sm">
+@@ -658,7 +702,12 @@ function ClientsSection({
+                     onClick={() => onOpen(client)}
+                   >
+                     <td className="py-3 pr-4 font-medium text-zinc-100">
+-                      {client.name}
++                      <span className="inline-flex flex-wrap items-center gap-2">
++                        {client.name}
++                        {client.isActive === false ? (
++                          <InactiveBadge />
++                        ) : null}
++                      </span>
+                     </td>
+                     <td className="py-3 pr-4 text-zinc-300">
+                       {formatPhone(client.phone)}
+@@ -697,8 +746,9 @@ function ClientsSection({
+               >
+                 <div className="flex items-start justify-between gap-3">
+                   <div className="min-w-0">
+-                    <p className="truncate text-sm font-medium text-zinc-100">
+-                      {client.name}
++                    <p className="flex flex-wrap items-center gap-2 truncate text-sm font-medium text-zinc-100">
++                      <span className="truncate">{client.name}</span>
++                      {client.isActive === false ? <InactiveBadge /> : null}
+                     </p>
+                     <p className="mt-1 text-xs text-zinc-400">
+                       {formatPhone(client.phone)}
+@@ -811,6 +861,9 @@ function ClientModal({
+   form,
+   submitting,
+   error,
++  title = "Cadastrar cliente",
++  submitLabel,
++  stackZ = 100,
+   onClose,
+   onChange,
+   onSubmit,
+@@ -818,17 +871,25 @@ function ClientModal({
+   form: ClientFormState;
+   submitting: boolean;
+   error: string | null;
++  title?: string;
++  submitLabel?: string;
++  stackZ?: number;
+   onClose: () => void;
+   onChange: React.Dispatch<React.SetStateAction<ClientFormState>>;
+   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+ }) {
++  const resolvedSubmitLabel = submitting
++    ? "Salvando..."
++    : (submitLabel ?? "Cadastrar cliente");
++
+   return (
+-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-4 md:items-center">
++    <div
++      className="fixed inset-0 flex items-end justify-center bg-black/70 p-4 md:items-center"
++      style={{ zIndex: stackZ }}
++    >
+       <div className="w-full max-w-lg rounded-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
+         <div className="mb-4 flex items-center justify-between">
+-          <h2 className="text-lg font-semibold text-zinc-50">
+-            Cadastrar cliente
+-          </h2>
++          <h2 className="text-lg font-semibold text-zinc-50">{title}</h2>
+           <button
+             type="button"
+             onClick={onClose}
+@@ -917,7 +978,7 @@ function ClientModal({
+             disabled={submitting}
+             className="w-full rounded-2xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-strong)] px-4 py-3 text-sm font-semibold text-zinc-950 disabled:opacity-50"
+           >
+-            {submitting ? "Salvando..." : "Cadastrar cliente"}
++            {submitting ? "Salvando..." : resolvedSubmitLabel}
+           </button>
+         </form>
+       </div>
+@@ -941,6 +1002,8 @@ function HistoryDrawer({
+   onReminderChange,
+   onSubmitHistory,
+   onSubmitReminder,
++  onClientUpdated,
++  onClientDeleted,
+   onClose,
+ }: {
+   client: ApiClient;
+@@ -958,8 +1021,112 @@ function HistoryDrawer({
+   onReminderChange: React.Dispatch<React.SetStateAction<ReminderFormState>>;
+   onSubmitHistory: (event: React.FormEvent<HTMLFormElement>) => void;
+   onSubmitReminder: (event: React.FormEvent<HTMLFormElement>) => void;
++  onClientUpdated: (client: ApiClient) => void | Promise<void>;
++  onClientDeleted: () => void | Promise<void>;
+   onClose: () => void;
+ }) {
++  const isInactive = client.isActive === false;
++  const [editOpen, setEditOpen] = useState(false);
++  const [editForm, setEditForm] = useState<ClientFormState>(() =>
++    clientToForm(client),
++  );
++  const [editError, setEditError] = useState<string | null>(null);
++  const [editSubmitting, setEditSubmitting] = useState(false);
++  const [deactivateConfirm, setDeactivateConfirm] = useState(false);
++  const [deleteOpen, setDeleteOpen] = useState(false);
++  const [deleteConfirmName, setDeleteConfirmName] = useState("");
++  const [actionError, setActionError] = useState<string | null>(null);
++  const [actionSubmitting, setActionSubmitting] = useState(false);
++
++  useEffect(() => {
++    setEditForm(clientToForm(client));
++    setEditError(null);
++    setDeactivateConfirm(false);
++    setDeleteOpen(false);
++    setDeleteConfirmName("");
++    setActionError(null);
++  }, [client]);
++
++  async function handleEditSubmit(event: React.FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++
++    if (!editForm.name.trim() || !editForm.phone.trim()) {
++      setEditError("Informe nome e telefone do cliente.");
++      return;
++    }
++
++    setEditSubmitting(true);
++    setEditError(null);
++
++    try {
++      const updated = await api.updateClient(client.id, {
++        name: editForm.name.trim(),
++        phone: editForm.phone.trim(),
++        email: editForm.email.trim() || null,
++        birthDate: editForm.birthDate
++          ? new Date(`${editForm.birthDate}T12:00:00`).toISOString()
++          : null,
++        notes: editForm.notes.trim() || null,
++      });
++
++      setEditOpen(false);
++      await onClientUpdated(updated);
++    } catch (requestError) {
++      setEditError(getErrorMessage(requestError));
++    } finally {
++      setEditSubmitting(false);
++    }
++  }
++
++  async function handleDeactivate() {
++    setActionSubmitting(true);
++    setActionError(null);
++
++    try {
++      const updated = await api.deactivateClient(client.id);
++      setDeactivateConfirm(false);
++      await onClientUpdated(updated);
++    } catch (requestError) {
++      setActionError(getErrorMessage(requestError));
++    } finally {
++      setActionSubmitting(false);
++    }
++  }
++
++  async function handleReactivate() {
++    setActionSubmitting(true);
++    setActionError(null);
++
++    try {
++      const updated = await api.reactivateClient(client.id);
++      await onClientUpdated(updated);
++    } catch (requestError) {
++      setActionError(getErrorMessage(requestError));
++    } finally {
++      setActionSubmitting(false);
++    }
++  }
++
++  async function handleDelete() {
++    if (deleteConfirmName !== client.name) {
++      setActionError("Digite o nome do cliente exatamente como aparece na ficha.");
++      return;
++    }
++
++    setActionSubmitting(true);
++    setActionError(null);
++
++    try {
++      await api.deleteClient(client.id);
++      setDeleteOpen(false);
++      await onClientDeleted();
++    } catch (requestError) {
++      setActionError(getErrorMessage(requestError));
++    } finally {
++      setActionSubmitting(false);
++    }
++  }
++
+   return (
+     <div className="fixed inset-0 z-[110] flex justify-end bg-black/70">
+       <button
+@@ -976,9 +1143,12 @@ function HistoryDrawer({
+                 <UserRound className="size-5" />
+               </AccentIconWrap>
+               <div className="min-w-0">
+-                <h2 className="truncate text-lg font-semibold text-zinc-50">
+-                  {client.name}
+-                </h2>
++                <div className="flex flex-wrap items-center gap-2">
++                  <h2 className="truncate text-lg font-semibold text-zinc-50">
++                    {client.name}
++                  </h2>
++                  {isInactive ? <InactiveBadge /> : null}
++                </div>
+                 <p className="mt-1 text-xs text-zinc-400">
+                   {formatPhone(client.phone)}
+                   {client.email ? ` · ${client.email}` : ""}
+@@ -994,6 +1164,85 @@ function HistoryDrawer({
+               <X className="size-4" />
+             </button>
+           </div>
++
++          <div className="mt-4 flex flex-wrap gap-2">
++            <button
++              type="button"
++              onClick={() => {
++                setEditForm(clientToForm(client));
++                setEditError(null);
++                setEditOpen(true);
++              }}
++              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-zinc-700"
++            >
++              <Pencil className="size-3.5" />
++              Editar ficha
++            </button>
++            {isInactive ? (
++              <button
++                type="button"
++                disabled={actionSubmitting}
++                onClick={() => void handleReactivate()}
++                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/15 disabled:opacity-50"
++              >
++                <UserCheck className="size-3.5" />
++                Reativar
++              </button>
++            ) : deactivateConfirm ? (
++              <div className="flex flex-wrap items-center gap-2">
++                <span className="text-xs text-zinc-400">
++                  Desativar este cliente?
++                </span>
++                <button
++                  type="button"
++                  disabled={actionSubmitting}
++                  onClick={() => void handleDeactivate()}
++                  className="rounded-xl bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-200 ring-1 ring-amber-500/30 disabled:opacity-50"
++                >
++                  Confirmar
++                </button>
++                <button
++                  type="button"
++                  onClick={() => setDeactivateConfirm(false)}
++                  className="rounded-xl px-3 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-200"
++                >
++                  Cancelar
++                </button>
++              </div>
++            ) : (
++              <button
++                type="button"
++                disabled={actionSubmitting}
++                onClick={() => {
++                  setActionError(null);
++                  setDeactivateConfirm(true);
++                }}
++                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-zinc-700 disabled:opacity-50"
++              >
++                <UserMinus className="size-3.5" />
++                Desativar
++              </button>
++            )}
++            <button
++              type="button"
++              disabled={actionSubmitting}
++              onClick={() => {
++                setActionError(null);
++                setDeleteConfirmName("");
++                setDeleteOpen(true);
++              }}
++              className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/15 disabled:opacity-50"
++            >
++              <Trash2 className="size-3.5" />
++              Excluir
++            </button>
++          </div>
++
++          {actionError && !editOpen && !deleteOpen ? (
++            <p className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">
++              {actionError}
++            </p>
++          ) : null}
+         </div>
+ 
+         <div className="space-y-6 px-5 py-5">
+@@ -1257,11 +1506,112 @@ function HistoryDrawer({
+             </form>
+           </section>
+         </div>
++
++        {editOpen ? (
++          <ClientModal
++            title="Editar ficha"
++            submitLabel="Salvar alterações"
++            stackZ={120}
++            form={editForm}
++            submitting={editSubmitting}
++            error={editError}
++            onClose={() => setEditOpen(false)}
++            onChange={setEditForm}
++            onSubmit={handleEditSubmit}
++          />
++        ) : null}
++
++        {deleteOpen ? (
++          <div
++            className="fixed inset-0 flex items-end justify-center bg-black/70 p-4 md:items-center"
++            style={{ zIndex: 120 }}
++          >
++            <div className="w-full max-w-lg rounded-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
++              <div className="mb-4 flex items-center justify-between">
++                <h2 className="text-lg font-semibold text-zinc-50">
++                  Excluir cliente
++                </h2>
++                <button
++                  type="button"
++                  onClick={() => setDeleteOpen(false)}
++                  className="rounded-xl border border-zinc-800 p-2 text-zinc-400"
++                  aria-label="Fechar"
++                >
++                  <X className="size-4" />
++                </button>
++              </div>
++              <p className="text-sm text-zinc-300">
++                Esta ação não pode ser desfeita. Digite{" "}
++                <span className="font-semibold text-zinc-100">{client.name}</span>{" "}
++                para confirmar a exclusão.
++              </p>
++              <div className="mt-4">
++                <Field label="Nome do cliente">
++                  <input
++                    value={deleteConfirmName}
++                    onChange={(event) =>
++                      setDeleteConfirmName(event.target.value)
++                    }
++                    placeholder={client.name}
++                    className={inputClass}
++                    autoComplete="off"
++                  />
++                </Field>
++              </div>
++              {actionError ? (
++                <p className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">
++                  {actionError}
++                </p>
++              ) : null}
++              <div className="mt-4 flex gap-2">
++                <button
++                  type="button"
++                  onClick={() => setDeleteOpen(false)}
++                  className="flex-1 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-200"
++                >
++                  Cancelar
++                </button>
++                <button
++                  type="button"
++                  disabled={
++                    actionSubmitting || deleteConfirmName !== client.name
++                  }
++                  onClick={() => void handleDelete()}
++                  className="flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
++                >
++                  {actionSubmitting ? "Excluindo..." : "Excluir definitivamente"}
++                </button>
++              </div>
++            </div>
++          </div>
++        ) : null}
+       </aside>
+     </div>
+   );
+ }
+ 
++function InactiveBadge() {
++  return (
++    <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
++      Inativo
++    </span>
++  );
++}
++
++function clientToForm(client: ApiClient): ClientFormState {
++  const birthDate = client.birthDate
++    ? client.birthDate.slice(0, 10)
++    : "";
++
++  return {
++    name: client.name,
++    phone: client.phone,
++    email: client.email ?? "",
++    birthDate,
++    notes: client.notes ?? "",
++  };
++}
++
+ function SummaryCard({
+   label,
+   value,
+diff --git a/app/admin/gestao/gestao-board.tsx b/app/admin/gestao/gestao-board.tsx
+index 5d02156..b2602d8 100644
+--- a/app/admin/gestao/gestao-board.tsx
++++ b/app/admin/gestao/gestao-board.tsx
+@@ -65,6 +65,16 @@ type GoalFormState = {
+   endDate: string;
+ };
+ 
++type BranchFormState = {
++  name: string;
++  slug: string;
++  document: string;
++  whatsapp: string;
++  ownerName: string;
++  ownerEmail: string;
++  ownerPhone: string;
++};
++
+ export function GestaoBoard() {
+   const { tenant, loading: tenantLoading } = useTenant();
+   const homeTenantId = tenant.id === "local" ? undefined : tenant.id;
+@@ -81,11 +91,23 @@ export function GestaoBoard() {
+   const [form, setForm] = useState<GoalFormState>(initialGoalForm());
+   const [formError, setFormError] = useState<string | null>(null);
+   const [submitting, setSubmitting] = useState(false);
++  const [branchModalOpen, setBranchModalOpen] = useState(false);
++  const [branchForm, setBranchForm] = useState<BranchFormState>(
++    initialBranchForm(),
++  );
++  const [branchSlugTouched, setBranchSlugTouched] = useState(false);
++  const [branchFormError, setBranchFormError] = useState<string | null>(null);
++  const [branchSubmitting, setBranchSubmitting] = useState(false);
+ 
+   const selectedUnit =
+     units.find((unit) => unit.id === selectedUnitId) ?? units[0];
+   const workingTenantId = selectedUnit?.id ?? homeTenantId;
+   const canSeeNetwork = Boolean(selectedUnit?.isHeadquarters) && units.length > 1;
++  const headquarters = units.find((unit) => unit.isHeadquarters);
++  const canCreateBranch = Boolean(
++    headquarters &&
++      (selectedUnit?.isHeadquarters || units.some((unit) => unit.isHeadquarters)),
++  );
+ 
+   const loadUnits = useCallback(async () => {
+     if (!homeTenantId) {
+@@ -233,6 +255,68 @@ export function GestaoBoard() {
+     }
+   }
+ 
++  async function handleCreateBranch(event: React.FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++
++    if (!headquarters) {
++      setBranchFormError("Matriz indisponível. Recarregue o painel.");
++      return;
++    }
++
++    const name = branchForm.name.trim();
++    const slug = branchForm.slug.trim().toLowerCase();
++    const document = branchForm.document.replace(/\D/g, "");
++    const whatsapp = branchForm.whatsapp.replace(/\D/g, "");
++    const ownerName = branchForm.ownerName.trim();
++    const ownerEmail = branchForm.ownerEmail.trim().toLowerCase();
++    const ownerPhone = branchForm.ownerPhone.replace(/\D/g, "");
++
++    if (
++      !name ||
++      !slug ||
++      !document ||
++      !whatsapp ||
++      !ownerName ||
++      !ownerEmail ||
++      !ownerPhone
++    ) {
++      setBranchFormError("Preencha todos os campos da nova filial.");
++      return;
++    }
++
++    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
++      setBranchFormError(
++        "O slug deve conter apenas letras minúsculas, números e hífens.",
++      );
++      return;
++    }
++
++    setBranchSubmitting(true);
++    setBranchFormError(null);
++
++    try {
++      await api.createUnit({
++        name,
++        slug,
++        document,
++        whatsapp,
++        ownerName,
++        ownerEmail,
++        ownerPhone,
++        parentTenantId: headquarters.id,
++      });
++
++      setBranchModalOpen(false);
++      setBranchForm(initialBranchForm());
++      setBranchSlugTouched(false);
++      await loadUnits();
++    } catch (requestError) {
++      setBranchFormError(getErrorMessage(requestError));
++    } finally {
++      setBranchSubmitting(false);
++    }
++  }
++
+   return (
+     <div className="relative flex flex-1 flex-col px-4 pb-4 pt-6 sm:px-6 lg:px-10 xl:px-12">
+       <header className="mb-4 flex flex-col gap-4 lg:mb-6 lg:flex-row lg:items-start lg:justify-between">
+@@ -242,18 +326,35 @@ export function GestaoBoard() {
+             Metas e unidades · {selectedUnit?.name ?? tenant.name}
+           </p>
+         </div>
+-        <button
+-          type="button"
+-          onClick={() => {
+-            setFormError(null);
+-            setForm(initialGoalForm());
+-            setModalOpen(true);
+-          }}
+-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-strong)] px-4 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-[color-mix(in_srgb,var(--accent)_20%,transparent)]"
+-        >
+-          <Plus className="size-4" />
+-          Definir nova meta
+-        </button>
++        <div className="flex flex-col gap-2 sm:flex-row">
++          {canCreateBranch ? (
++            <button
++              type="button"
++              onClick={() => {
++                setBranchFormError(null);
++                setBranchForm(initialBranchForm());
++                setBranchSlugTouched(false);
++                setBranchModalOpen(true);
++              }}
++              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-sm font-semibold text-zinc-100 hover:border-zinc-600"
++            >
++              <Building2 className="size-4 text-[var(--accent)]" />
++              Nova filial
++            </button>
++          ) : null}
++          <button
++            type="button"
++            onClick={() => {
++              setFormError(null);
++              setForm(initialGoalForm());
++              setModalOpen(true);
++            }}
++            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-strong)] px-4 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-[color-mix(in_srgb,var(--accent)_20%,transparent)]"
++          >
++            <Plus className="size-4" />
++            Definir nova meta
++          </button>
++        </div>
+       </header>
+ 
+       <AdminNav className="mb-6 lg:hidden" />
+@@ -394,6 +495,31 @@ export function GestaoBoard() {
+           onSubmit={handleCreateGoal}
+         />
+       ) : null}
++
++      {branchModalOpen && headquarters ? (
++        <BranchModal
++          form={branchForm}
++          headquartersName={headquarters.name}
++          submitting={branchSubmitting}
++          error={branchFormError}
++          onClose={() => setBranchModalOpen(false)}
++          onChange={setBranchForm}
++          onNameChange={(name) => {
++            setBranchForm((current) => {
++              const next = { ...current, name };
++              if (!branchSlugTouched) {
++                next.slug = suggestSlugFromName(name);
++              }
++              return next;
++            });
++          }}
++          onSlugChange={(slug) => {
++            setBranchSlugTouched(true);
++            setBranchForm((current) => ({ ...current, slug }));
++          }}
++          onSubmit={handleCreateBranch}
++        />
++      ) : null}
+     </div>
+   );
+ }
+@@ -423,7 +549,8 @@ function UnitSelector({
+           </h2>
+         </div>
+         <p className="text-xs text-zinc-500">
+-          {units.length} unidade{units.length === 1 ? "" : "s"} sob gestão
++          {units.length} unidade{units.length === 1 ? "" : "s"} · clientes e
++          catálogo compartilhados da matriz
+         </p>
+       </div>
+ 
+@@ -840,6 +967,189 @@ function initialGoalForm(): GoalFormState {
+   };
+ }
+ 
++function initialBranchForm(): BranchFormState {
++  return {
++    name: "",
++    slug: "",
++    document: "",
++    whatsapp: "",
++    ownerName: "",
++    ownerEmail: "",
++    ownerPhone: "",
++  };
++}
++
++function suggestSlugFromName(name: string) {
++  return name
++    .trim()
++    .toLowerCase()
++    .normalize("NFD")
++    .replace(/[\u0300-\u036f]/g, "")
++    .replace(/\s+/g, "-")
++    .replace(/[^a-z0-9-]/g, "")
++    .replace(/-+/g, "-")
++    .replace(/^-|-$/g, "");
++}
++
++function BranchModal({
++  form,
++  headquartersName,
++  submitting,
++  error,
++  onClose,
++  onChange,
++  onNameChange,
++  onSlugChange,
++  onSubmit,
++}: {
++  form: BranchFormState;
++  headquartersName: string;
++  submitting: boolean;
++  error: string | null;
++  onClose: () => void;
++  onChange: React.Dispatch<React.SetStateAction<BranchFormState>>;
++  onNameChange: (name: string) => void;
++  onSlugChange: (slug: string) => void;
++  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
++}) {
++  return (
++    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-4 md:items-center">
++      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
++        <div className="mb-4 flex items-center justify-between">
++          <div>
++            <h2 className="text-lg font-semibold text-zinc-50">Nova filial</h2>
++            <p className="mt-1 text-xs text-zinc-500">
++              Vinculada à matriz · {headquartersName}
++            </p>
++          </div>
++          <button
++            type="button"
++            onClick={onClose}
++            className="rounded-xl border border-zinc-800 p-2 text-zinc-400"
++            aria-label="Fechar"
++          >
++            <X className="size-4" />
++          </button>
++        </div>
++        <form onSubmit={onSubmit} className="space-y-4">
++          <Field label="Nome da filial">
++            <input
++              required
++              value={form.name}
++              onChange={(event) => onNameChange(event.target.value)}
++              placeholder="Ex: Studio Centro"
++              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-[color-mix(in_srgb,var(--accent)_40%,transparent)]"
++            />
++          </Field>
++          <Field label="Slug (URL)">
++            <input
++              required
++              value={form.slug}
++              onChange={(event) =>
++                onSlugChange(event.target.value.toLowerCase())
++              }
++              placeholder="studio-centro"
++              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-[color-mix(in_srgb,var(--accent)_40%,transparent)]"
++            />
++          </Field>
++          <Field label="CNPJ / CPF">
++            <input
++              required
++              inputMode="numeric"
++              value={form.document}
++              onChange={(event) =>
++                onChange((current) => ({
++                  ...current,
++                  document: event.target.value,
++                }))
++              }
++              placeholder="Somente números"
++              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
++            />
++          </Field>
++          <Field label="WhatsApp da unidade">
++            <input
++              required
++              inputMode="tel"
++              value={form.whatsapp}
++              onChange={(event) =>
++                onChange((current) => ({
++                  ...current,
++                  whatsapp: event.target.value,
++                }))
++              }
++              placeholder="5511999990000"
++              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
++            />
++          </Field>
++          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3">
++            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
++              Gestor da filial
++            </p>
++            <div className="mt-3 space-y-3">
++              <Field label="Nome">
++                <input
++                  required
++                  value={form.ownerName}
++                  onChange={(event) =>
++                    onChange((current) => ({
++                      ...current,
++                      ownerName: event.target.value,
++                    }))
++                  }
++                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none"
++                />
++              </Field>
++              <Field label="E-mail">
++                <input
++                  required
++                  type="email"
++                  value={form.ownerEmail}
++                  onChange={(event) =>
++                    onChange((current) => ({
++                      ...current,
++                      ownerEmail: event.target.value,
++                    }))
++                  }
++                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none"
++                />
++              </Field>
++              <Field label="Telefone">
++                <input
++                  required
++                  inputMode="tel"
++                  value={form.ownerPhone}
++                  onChange={(event) =>
++                    onChange((current) => ({
++                      ...current,
++                      ownerPhone: event.target.value,
++                    }))
++                  }
++                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none"
++                />
++              </Field>
++            </div>
++          </div>
++
++          {error ? (
++            <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">
++              {error}
++            </p>
++          ) : null}
++
++          <button
++            type="submit"
++            disabled={submitting}
++            className="w-full rounded-2xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-strong)] px-4 py-3 text-sm font-semibold text-zinc-950 disabled:opacity-50"
++          >
++            {submitting ? "Cadastrando..." : "Cadastrar filial"}
++          </button>
++        </form>
++      </div>
++    </div>
++  );
++}
++
+ function periodRange(period: ApiGoalPeriod) {
+   const now = new Date();
+ 
+diff --git a/app/admin/usuarios/usuarios-board.tsx b/app/admin/usuarios/usuarios-board.tsx
+index faa1690..dc03b59 100644
+--- a/app/admin/usuarios/usuarios-board.tsx
++++ b/app/admin/usuarios/usuarios-board.tsx
+@@ -48,6 +48,18 @@ const INITIAL_FORM: UserFormState = {
+   asaasWalletId: "",
+ };
+ 
++type NewGestorFormState = {
++  name: string;
++  email: string;
++  phone: string;
++};
++
++const INITIAL_GESTOR_FORM: NewGestorFormState = {
++  name: "",
++  email: "",
++  phone: "",
++};
++
+ const STAFF_ROLES: Array<{
+   id: ApiStaffRole;
+   label: string;
+@@ -104,6 +116,13 @@ export function UsuariosBoard() {
+   const [formError, setFormError] = useState<string | null>(null);
+   const [submitting, setSubmitting] = useState(false);
+   const [updatingId, setUpdatingId] = useState<string | null>(null);
++  const [gestorModalOpen, setGestorModalOpen] = useState(false);
++  const [gestorForm, setGestorForm] = useState<NewGestorFormState>(
++    INITIAL_GESTOR_FORM,
++  );
++  const [gestorFormError, setGestorFormError] = useState<string | null>(null);
++  const [gestorSubmitting, setGestorSubmitting] = useState(false);
++  const [transferringId, setTransferringId] = useState<string | null>(null);
+ 
+   const loadUsers = useCallback(async () => {
+     if (!tenantId) {
+@@ -261,6 +280,60 @@ export function UsuariosBoard() {
+     }
+   }
+ 
++  function canPromoteToGestor(user: ApiUser) {
++    return user.role !== "ADMIN";
++  }
++
++  async function handlePromoteToGestor(user: ApiUser) {
++    const confirmed = window.confirm(
++      "O gestor atual será rebaixado a profissional. Continuar?",
++    );
++    if (!confirmed) {
++      return;
++    }
++
++    setTransferringId(user.id);
++    setError(null);
++
++    try {
++      await api.transferOwner({ newOwnerUserId: user.id });
++      await loadUsers();
++    } catch (requestError) {
++      setError(getErrorMessage(requestError));
++    } finally {
++      setTransferringId(null);
++    }
++  }
++
++  async function handleTransferNewGestor(
++    event: React.FormEvent<HTMLFormElement>,
++  ) {
++    event.preventDefault();
++
++    const name = gestorForm.name.trim();
++    const email = gestorForm.email.trim().toLowerCase();
++    const phone = gestorForm.phone.replace(/\D/g, "");
++
++    if (!name || !email || !phone) {
++      setGestorFormError("Preencha nome, e-mail e telefone do novo gestor.");
++      return;
++    }
++
++    setGestorSubmitting(true);
++    setGestorFormError(null);
++
++    try {
++      await api.transferOwner({ name, email, phone });
++      setGestorModalOpen(false);
++      setGestorForm(INITIAL_GESTOR_FORM);
++      await loadUsers();
++    } catch (requestError) {
++      setGestorFormError(getErrorMessage(requestError));
++    } finally {
++      setGestorSubmitting(false);
++    }
++  }
++
+   return (
+     <div className="relative flex flex-1 flex-col px-4 pb-4 pt-6 sm:px-6 lg:px-10 xl:px-12">
+       <header className="mb-4 flex flex-col gap-4 lg:mb-6 lg:flex-row lg:items-start lg:justify-between">
+@@ -273,16 +346,34 @@ export function UsuariosBoard() {
+             O e-mail libera o acesso. A carteira Asaas do profissional é a
+             conta que recebe a parte dele no split.
+           </p>
++          <p className="mt-2 max-w-xl text-sm text-zinc-500">
++            Há um único gestor principal do salão; ao transferir a titularidade,
++            o gestor anterior passa a profissional.
++          </p>
+         </div>
+ 
+-        <button
+-          type="button"
+-          onClick={openCreateModal}
+-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-strong)] px-4 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-[color-mix(in_srgb,var(--accent)_20%,transparent)]"
+-        >
+-          <Plus className="size-4" />
+-          Cadastrar colaborador
+-        </button>
++        <div className="flex flex-col gap-2 sm:flex-row">
++          <button
++            type="button"
++            onClick={() => {
++              setGestorFormError(null);
++              setGestorForm(INITIAL_GESTOR_FORM);
++              setGestorModalOpen(true);
++            }}
++            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-sm font-semibold text-zinc-100 hover:border-zinc-600"
++          >
++            <ShieldCheck className="size-4 text-[var(--accent)]" />
++            Novo gestor (pessoa nova)
++          </button>
++          <button
++            type="button"
++            onClick={openCreateModal}
++            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-strong)] px-4 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-[color-mix(in_srgb,var(--accent)_20%,transparent)]"
++          >
++            <Plus className="size-4" />
++            Cadastrar colaborador
++          </button>
++        </div>
+       </header>
+ 
+       <AdminNav className="mb-4 lg:hidden" />
+@@ -445,6 +536,21 @@ export function UsuariosBoard() {
+                                   void handleRoleChange(user.id, role)
+                                 }
+                               />
++                              {canPromoteToGestor(user) ? (
++                                <button
++                                  type="button"
++                                  disabled={transferringId === user.id}
++                                  onClick={() => void handlePromoteToGestor(user)}
++                                  className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-[color-mix(in_srgb,var(--accent)_35%,transparent)] disabled:opacity-50"
++                                >
++                                  {transferringId === user.id ? (
++                                    <Loader2 className="size-3.5 animate-spin text-[var(--accent)]" />
++                                  ) : (
++                                    <ShieldCheck className="size-3.5 text-[var(--accent)]" />
++                                  )}
++                                  Tornar gestor
++                                </button>
++                              ) : null}
+                             </div>
+                           </td>
+                         </tr>
+@@ -493,6 +599,21 @@ export function UsuariosBoard() {
+                             void handleRoleChange(user.id, role)
+                           }
+                         />
++                        {canPromoteToGestor(user) ? (
++                          <button
++                            type="button"
++                            disabled={transferringId === user.id}
++                            onClick={() => void handlePromoteToGestor(user)}
++                            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 disabled:opacity-50"
++                          >
++                            {transferringId === user.id ? (
++                              <Loader2 className="size-3.5 animate-spin text-[var(--accent)]" />
++                            ) : (
++                              <ShieldCheck className="size-3.5 text-[var(--accent)]" />
++                            )}
++                            Tornar gestor
++                          </button>
++                        ) : null}
+                       </div>
+                     </li>
+                   ))}
+@@ -518,6 +639,17 @@ export function UsuariosBoard() {
+           onSubmit={handleSaveUser}
+         />
+       ) : null}
++
++      {gestorModalOpen ? (
++        <NewGestorModal
++          form={gestorForm}
++          submitting={gestorSubmitting}
++          error={gestorFormError}
++          onClose={() => setGestorModalOpen(false)}
++          onChange={setGestorForm}
++          onSubmit={handleTransferNewGestor}
++        />
++      ) : null}
+     </div>
+   );
+ }
+@@ -620,6 +752,110 @@ function RoleSelect({
+   );
+ }
+ 
++function NewGestorModal({
++  form,
++  submitting,
++  error,
++  onClose,
++  onChange,
++  onSubmit,
++}: {
++  form: NewGestorFormState;
++  submitting: boolean;
++  error: string | null;
++  onClose: () => void;
++  onChange: React.Dispatch<React.SetStateAction<NewGestorFormState>>;
++  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
++}) {
++  return (
++    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-4 md:items-center">
++      <div className="w-full max-w-lg rounded-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
++        <div className="mb-4 flex items-center justify-between">
++          <div>
++            <h2 className="text-lg font-semibold text-zinc-50">
++              Transferir para novo gestor
++            </h2>
++            <p className="mt-1 text-sm text-zinc-500">
++              O gestor atual será rebaixado a profissional ao confirmar.
++            </p>
++          </div>
++          <button
++            type="button"
++            onClick={onClose}
++            className="rounded-xl border border-zinc-800 p-2 text-zinc-400"
++            aria-label="Fechar"
++          >
++            <X className="size-4" />
++          </button>
++        </div>
++
++        <form onSubmit={onSubmit} className="space-y-4">
++          <Field label="Nome">
++            <input
++              required
++              value={form.name}
++              onChange={(event) =>
++                onChange((current) => ({ ...current, name: event.target.value }))
++              }
++              placeholder="Nome completo"
++              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
++            />
++          </Field>
++          <Field label="E-mail">
++            <input
++              required
++              type="email"
++              value={form.email}
++              onChange={(event) =>
++                onChange((current) => ({
++                  ...current,
++                  email: event.target.value,
++                }))
++              }
++              placeholder="gestor@salao.com"
++              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
++            />
++          </Field>
++          <Field label="Telefone / WhatsApp">
++            <input
++              required
++              inputMode="tel"
++              value={form.phone}
++              onChange={(event) =>
++                onChange((current) => ({
++                  ...current,
++                  phone: event.target.value,
++                }))
++              }
++              placeholder="5511999990000"
++              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
++            />
++          </Field>
++
++          {error ? (
++            <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">
++              {error}
++            </p>
++          ) : null}
++
++          <button
++            type="submit"
++            disabled={submitting}
++            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-strong)] px-4 py-3 text-sm font-semibold text-zinc-950 disabled:opacity-50"
++          >
++            {submitting ? (
++              <Loader2 className="size-4 animate-spin" />
++            ) : (
++              <ShieldCheck className="size-4" />
++            )}
++            {submitting ? "Transferindo..." : "Confirmar transferência"}
++          </button>
++        </form>
++      </div>
++    </div>
++  );
++}
++
+ function UserModal({
+   mode,
+   accountId,
+diff --git a/app/super-admin/parceiros/[id]/partner-detail-board.tsx b/app/super-admin/parceiros/[id]/partner-detail-board.tsx
+index f910ec8..7043a87 100644
+--- a/app/super-admin/parceiros/[id]/partner-detail-board.tsx
++++ b/app/super-admin/parceiros/[id]/partner-detail-board.tsx
+@@ -12,6 +12,7 @@ import {
+   formatCep,
+   lookupCep,
+ } from "@/lib/customer-profile";
++import { isDemoMode } from "@/lib/app-mode";
+ import { formatCurrency } from "@/lib/mock-data";
+ import type { TenantLifecycleStatus, TenantVertical } from "@/lib/tenant-types";
+ import {
+@@ -19,9 +20,11 @@ import {
+   getErrorMessage,
+   type ApiPartnerCompletenessStep,
+   type ApiPartnerCompletenessStepId,
++  type ApiManagementUnit,
+   type ApiPartnerContract,
+   type ApiPlatformPlan,
+   type ApiPlatformTenant,
++  type ApiUser,
+ } from "@/services/api";
+ import {
+   ArrowLeft,
+@@ -32,6 +35,7 @@ import {
+   Save,
+   ScrollText,
+   Upload,
++  UserRoundCog,
+ } from "lucide-react";
+ import Link from "next/link";
+ import { useCallback, useEffect, useMemo, useState } from "react";
+@@ -125,6 +129,17 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+     null,
+   );
+   const [apiOutdated, setApiOutdated] = useState(false);
++  const [transferManagerOpen, setTransferManagerOpen] = useState(false);
++  const [branches, setBranches] = useState<ApiManagementUnit[]>([]);
++  const [branchesLoading, setBranchesLoading] = useState(false);
++  const [branchName, setBranchName] = useState("");
++  const [branchSlug, setBranchSlug] = useState("");
++  const [branchDocument, setBranchDocument] = useState("");
++  const [branchWhatsapp, setBranchWhatsapp] = useState("");
++  const [branchOwnerName, setBranchOwnerName] = useState("");
++  const [branchOwnerEmail, setBranchOwnerEmail] = useState("");
++  const [branchOwnerPhone, setBranchOwnerPhone] = useState("");
++  const [creatingBranch, setCreatingBranch] = useState(false);
+ 
+   const applyTenant = useCallback((response: ApiPlatformTenant) => {
+     setTenant(response);
+@@ -188,6 +203,25 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+     void load();
+   }, [load]);
+ 
++  const loadBranches = useCallback(async () => {
++    setBranchesLoading(true);
++    try {
++      const list = await api.getSuperAdminTenantBranches(partnerId);
++      setBranches(list);
++    } catch (requestError) {
++      setError(getErrorMessage(requestError));
++    } finally {
++      setBranchesLoading(false);
++    }
++  }, [partnerId]);
++
++  useEffect(() => {
++    if (tab !== "cadastro" && tab !== "visao") {
++      return;
++    }
++    void loadBranches();
++  }, [tab, loadBranches]);
++
+   async function fillAddressFromCep(rawCep: string) {
+     const digits = digitsOnly(rawCep);
+     if (digits.length !== 8 || digits === lastLookedCep) {
+@@ -312,6 +346,58 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+     }
+   }
+ 
++  async function resendContract(contractId: string) {
++    setSaving(true);
++    setError(null);
++    setNotice(null);
++    try {
++      const updated = await api.resendSuperAdminPartnerContract(
++        partnerId,
++        contractId,
++      );
++      setNotice(
++        `DocuSign reenviado para o contrato ${updated.version ?? ""}.`.trim(),
++      );
++      await load();
++    } catch (requestError) {
++      setError(getErrorMessage(requestError));
++    } finally {
++      setSaving(false);
++    }
++  }
++
++  async function handleCreateBranch(event: React.FormEvent) {
++    event.preventDefault();
++    setCreatingBranch(true);
++    setError(null);
++    setNotice(null);
++    try {
++      const created = await api.createSuperAdminTenantBranch(partnerId, {
++        name: branchName.trim(),
++        slug: branchSlug.trim(),
++        document: branchDocument.trim(),
++        whatsapp: branchWhatsapp.trim(),
++        ownerName: branchOwnerName.trim(),
++        ownerEmail: branchOwnerEmail.trim(),
++        ownerPhone: branchOwnerPhone.trim(),
++      });
++      setNotice(`Filial “${created.name}” criada.`);
++      setBranchName("");
++      setBranchSlug("");
++      setBranchDocument("");
++      setBranchWhatsapp("");
++      setBranchOwnerName("");
++      setBranchOwnerEmail("");
++      setBranchOwnerPhone("");
++      await loadBranches();
++      await load({ soft: true });
++    } catch (requestError) {
++      setError(getErrorMessage(requestError));
++    } finally {
++      setCreatingBranch(false);
++    }
++  }
++
+   function toggleVertical(vertical: TenantVertical) {
+     setEnabledVerticals((current) => {
+       if (current.includes(vertical)) {
+@@ -402,6 +488,15 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+           </p>
+         </div>
+         <div className="flex flex-wrap gap-2">
++          <button
++            type="button"
++            disabled={saving}
++            onClick={() => setTransferManagerOpen(true)}
++            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-zinc-700 px-4 text-sm font-semibold text-zinc-100 disabled:opacity-60"
++          >
++            <UserRoundCog className="size-4" />
++            Trocar gestor
++          </button>
+           <button
+             type="button"
+             disabled={saving}
+@@ -648,7 +743,7 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+ 
+           <Section
+             title="Responsável / 1º acesso"
+-            description={`Convite envia senha temporária. Status: ${tenant.inviteStatus ?? "—"}.`}
++            description={`Convite envia senha temporária. Status: ${tenant.inviteStatus ?? "—"}. Use “Trocar gestor” no topo para transferir o acesso.`}
+           >
+             <div className="grid gap-3 sm:grid-cols-2">
+               <Field
+@@ -670,6 +765,95 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+             </div>
+           </Section>
+ 
++          <Section
++            title="Filiais"
++            description="Clientes e catálogo ficam na matriz (compartilhados). Agenda, equipe e WhatsApp são por unidade."
++          >
++            {branchesLoading ? (
++              <p className="text-sm text-zinc-500">Carregando filiais...</p>
++            ) : branches.length === 0 ? (
++              <p className="text-sm text-zinc-500">
++                Nenhuma filial cadastrada ainda.
++              </p>
++            ) : (
++              <ul className="mb-4 space-y-2">
++                {branches.map((branch) => (
++                  <li
++                    key={branch.id}
++                    className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3"
++                  >
++                    <div>
++                      <p className="text-sm font-medium text-zinc-100">
++                        {branch.name}
++                      </p>
++                      <p className="text-xs text-zinc-500">
++                        /{branch.slug}
++                        {branch.isHeadquarters ? " · matriz" : ""}
++                      </p>
++                    </div>
++                    <Link
++                      href={`/super-admin/parceiros/${branch.id}`}
++                      className="rounded-full border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:border-amber-400/40 hover:text-amber-200"
++                    >
++                      Abrir ficha
++                    </Link>
++                  </li>
++                ))}
++              </ul>
++            )}
++            <form
++              onSubmit={(event) => void handleCreateBranch(event)}
++              className="space-y-3 border-t border-zinc-800 pt-4"
++            >
++              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
++                Nova filial
++              </p>
++              <div className="grid gap-3 sm:grid-cols-2">
++                <Field label="Nome" value={branchName} onChange={setBranchName} />
++                <Field
++                  label="Slug (vitrine)"
++                  value={branchSlug}
++                  onChange={setBranchSlug}
++                />
++                <Field
++                  label="Documento"
++                  value={branchDocument}
++                  onChange={setBranchDocument}
++                />
++                <Field
++                  label="WhatsApp"
++                  value={branchWhatsapp}
++                  onChange={setBranchWhatsapp}
++                />
++                <Field
++                  label="Nome do gestor"
++                  value={branchOwnerName}
++                  onChange={setBranchOwnerName}
++                />
++                <Field
++                  label="E-mail do gestor"
++                  value={branchOwnerEmail}
++                  onChange={setBranchOwnerEmail}
++                  type="email"
++                />
++                <Field
++                  label="Telefone do gestor"
++                  value={branchOwnerPhone}
++                  onChange={setBranchOwnerPhone}
++                />
++              </div>
++              <div className="flex justify-end">
++                <button
++                  type="submit"
++                  disabled={creatingBranch}
++                  className="inline-flex min-h-10 items-center gap-2 rounded-full bg-amber-300 px-4 text-sm font-semibold text-zinc-950 disabled:opacity-60"
++                >
++                  {creatingBranch ? "Criando..." : "Criar filial"}
++                </button>
++              </div>
++            </form>
++          </Section>
++
+           <Section title="Endereço">
+             <div className="grid gap-3 sm:grid-cols-2">
+               <label className="text-xs text-zinc-400">
+@@ -896,6 +1080,16 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+                         ? ` · aceite em ${new Date(contract.acceptedAt).toLocaleDateString("pt-BR")}`
+                         : ""}
+                     </p>
++                    {contract.docusignStatus || contract.docusignEnvelopeId ? (
++                      <p className="mt-1 text-xs text-zinc-500">
++                        {contract.docusignStatus
++                          ? `DocuSign: ${contract.docusignStatus}`
++                          : ""}
++                        {contract.docusignEnvelopeId
++                          ? `${contract.docusignStatus ? " · " : ""}envelope ${contract.docusignEnvelopeId}`
++                          : ""}
++                      </p>
++                    ) : null}
+                   </div>
+                   <div className="flex flex-wrap gap-2">
+                     <button
+@@ -906,15 +1100,48 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+                       <FileText className="size-3.5" />
+                       Ver
+                     </button>
+-                    {contract.status === "ISSUED" ? (
+-                      <button
+-                        type="button"
+-                        disabled={saving}
+-                        onClick={() => void acceptContract(contract.id)}
+-                        className="rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30 disabled:opacity-60"
++                    {contract.signedDocumentUrl ? (
++                      <a
++                        href={contract.signedDocumentUrl}
++                        target="_blank"
++                        rel="noopener noreferrer"
++                        className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300"
+                       >
+-                        Registrar aceite
+-                      </button>
++                        Documento assinado
++                      </a>
++                    ) : null}
++                    {contract.status === "ISSUED" ? (
++                      contract.docusignEnvelopeId ? (
++                        <>
++                          <button
++                            type="button"
++                            disabled={saving}
++                            onClick={() => void resendContract(contract.id)}
++                            className="rounded-full bg-amber-300/15 px-3 py-1.5 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/30 disabled:opacity-60"
++                          >
++                            Reenviar DocuSign
++                          </button>
++                          {isDemoMode() ? (
++                            <button
++                              type="button"
++                              disabled={saving}
++                              onClick={() => void acceptContract(contract.id)}
++                              className="rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30 disabled:opacity-60"
++                            >
++                              Registrar aceite
++                            </button>
++                          ) : null}
++                        </>
++                      ) : (
++                        <button
++                          type="button"
++                          disabled={saving}
++                          onClick={() => void acceptContract(contract.id)}
++                          className="rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30 disabled:opacity-60"
++                        >
++                          Registrar aceite
++                        </button>
++                      )
+                     ) : null}
+                   </div>
+                 </div>
+@@ -931,6 +1158,21 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+         />
+       ) : null}
+ 
++      {transferManagerOpen ? (
++        <TransferManagerModal
++          partnerId={partnerId}
++          tenant={tenant}
++          busy={saving}
++          onClose={() => setTransferManagerOpen(false)}
++          onSuccess={async (message) => {
++            setTransferManagerOpen(false);
++            setNotice(message);
++            await load();
++          }}
++          setBusy={setSaving}
++        />
++      ) : null}
++
+       {previewHtml ? (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+           <div className="flex h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-zinc-700 bg-zinc-950">
+@@ -976,6 +1218,297 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+   );
+ }
+ 
++function TransferManagerModal({
++  partnerId,
++  tenant,
++  busy,
++  onClose,
++  onSuccess,
++  setBusy,
++}: {
++  partnerId: string;
++  tenant: ApiPlatformTenant;
++  busy: boolean;
++  onClose: () => void;
++  onSuccess: (message: string) => void | Promise<void>;
++  setBusy: (value: boolean) => void;
++}) {
++  const [scope, setScope] = useState<"same" | "other">("same");
++  const [mode, setMode] = useState<"existing" | "new">("existing");
++  const [staff, setStaff] = useState<ApiUser[]>([]);
++  const [tenants, setTenants] = useState<ApiPlatformTenant[]>([]);
++  const [loadingStaff, setLoadingStaff] = useState(true);
++  const [loadingTenants, setLoadingTenants] = useState(false);
++  const [selectedUserId, setSelectedUserId] = useState("");
++  const [toTenantId, setToTenantId] = useState("");
++  const [newName, setNewName] = useState("");
++  const [newEmail, setNewEmail] = useState("");
++  const [newPhone, setNewPhone] = useState("");
++  const [formError, setFormError] = useState<string | null>(null);
++
++  useEffect(() => {
++    let cancelled = false;
++    setLoadingStaff(true);
++    void api
++      .getUsers({ tenantId: partnerId, staffOnly: true })
++      .then((users) => {
++        if (!cancelled) {
++          setStaff(users);
++        }
++      })
++      .catch((requestError) => {
++        if (!cancelled) {
++          setFormError(getErrorMessage(requestError));
++        }
++      })
++      .finally(() => {
++        if (!cancelled) {
++          setLoadingStaff(false);
++        }
++      });
++    return () => {
++      cancelled = true;
++    };
++  }, [partnerId]);
++
++  useEffect(() => {
++    if (scope !== "other") {
++      return;
++    }
++    let cancelled = false;
++    setLoadingTenants(true);
++    void api
++      .getSuperAdminTenants()
++      .then((list) => {
++        if (!cancelled) {
++          setTenants(list.filter((item) => item.id !== partnerId));
++        }
++      })
++      .catch((requestError) => {
++        if (!cancelled) {
++          setFormError(getErrorMessage(requestError));
++        }
++      })
++      .finally(() => {
++        if (!cancelled) {
++          setLoadingTenants(false);
++        }
++      });
++    return () => {
++      cancelled = true;
++    };
++  }, [partnerId, scope]);
++
++  const eligibleStaff = useMemo(
++    () => staff.filter((user) => user.id !== tenant.owner?.id),
++    [staff, tenant.owner?.id],
++  );
++
++  async function submit(event: React.FormEvent) {
++    event.preventDefault();
++    setBusy(true);
++    setFormError(null);
++    try {
++      if (scope === "other" && !toTenantId) {
++        setFormError("Selecione o salão de destino.");
++        setBusy(false);
++        return;
++      }
++
++      const destination =
++        scope === "other" ? { toTenantId } : ({} as { toTenantId?: string });
++
++      if (scope === "same" && mode === "existing") {
++        if (!selectedUserId) {
++          setFormError("Selecione um membro da equipe.");
++          setBusy(false);
++          return;
++        }
++        await api.transferSuperAdminTenantOwner(partnerId, {
++          newOwnerUserId: selectedUserId,
++        });
++        await onSuccess("Gestor atualizado neste salão.");
++      } else if (scope === "other" && mode === "existing") {
++        if (!selectedUserId) {
++          setFormError("Selecione quem será o gestor no destino.");
++          setBusy(false);
++          return;
++        }
++        await api.transferSuperAdminTenantOwner(partnerId, {
++          newOwnerUserId: selectedUserId,
++          ...destination,
++        });
++        await onSuccess("Gestor movido para o outro salão.");
++      } else {
++        if (!newName.trim() || !newEmail.trim() || !newPhone.trim()) {
++          setFormError("Preencha nome, e-mail e telefone do novo gestor.");
++          setBusy(false);
++          return;
++        }
++        await api.transferSuperAdminTenantOwner(partnerId, {
++          name: newName.trim(),
++          email: newEmail.trim(),
++          phone: newPhone.trim(),
++          ...destination,
++        });
++        await onSuccess(
++          scope === "other"
++            ? "Novo gestor criado no salão de destino."
++            : "Gestor atualizado neste salão.",
++        );
++      }
++    } catch (requestError) {
++      setFormError(getErrorMessage(requestError));
++    } finally {
++      setBusy(false);
++    }
++  }
++
++  return (
++    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
++      <form
++        onSubmit={(event) => void submit(event)}
++        className="w-full max-w-lg rounded-3xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl"
++      >
++        <h3 className="text-lg font-semibold text-zinc-50">Trocar gestor</h3>
++        <p className="mt-2 text-sm text-zinc-500">
++          {tenant.name}
++          {tenant.owner?.name ? ` · gestor atual: ${tenant.owner.name}` : ""}
++        </p>
++        {formError ? (
++          <p className="mt-3 text-sm text-red-300">{formError}</p>
++        ) : null}
++        <div className="mt-4 flex flex-wrap gap-2">
++          <button
++            type="button"
++            onClick={() => setScope("same")}
++            className={cn(
++              "rounded-full px-3 py-1.5 text-xs font-semibold",
++              scope === "same"
++                ? "bg-amber-300 text-zinc-950"
++                : "border border-zinc-800 text-zinc-400",
++            )}
++          >
++            Neste salão
++          </button>
++          <button
++            type="button"
++            onClick={() => {
++              setScope("other");
++              setMode("new");
++            }}
++            className={cn(
++              "rounded-full px-3 py-1.5 text-xs font-semibold",
++              scope === "other"
++                ? "bg-amber-300 text-zinc-950"
++                : "border border-zinc-800 text-zinc-400",
++            )}
++          >
++            Para outro salão
++          </button>
++        </div>
++        {scope === "other" ? (
++          <label className="mt-4 block text-xs text-zinc-400">
++            Salão de destino
++            <select
++              value={toTenantId}
++              onChange={(event) => setToTenantId(event.target.value)}
++              disabled={loadingTenants || busy}
++              className="mt-1 h-10 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 text-sm text-zinc-100 disabled:opacity-60"
++            >
++              <option value="">
++                {loadingTenants ? "Carregando..." : "Selecione..."}
++              </option>
++              {tenants.map((item) => (
++                <option key={item.id} value={item.id}>
++                  {item.name} · {item.slug}
++                </option>
++              ))}
++            </select>
++          </label>
++        ) : null}
++        <div className="mt-4 flex gap-2">
++          {scope === "same" || staff.length > 0 ? (
++            <button
++              type="button"
++              onClick={() => setMode("existing")}
++              className={cn(
++                "rounded-full px-3 py-1.5 text-xs font-semibold",
++                mode === "existing"
++                  ? "bg-zinc-100 text-zinc-950"
++                  : "border border-zinc-800 text-zinc-400",
++              )}
++            >
++              {scope === "other" ? "Mover da equipe atual" : "Da equipe"}
++            </button>
++          ) : null}
++          <button
++            type="button"
++            onClick={() => setMode("new")}
++            className={cn(
++              "rounded-full px-3 py-1.5 text-xs font-semibold",
++              mode === "new"
++                ? "bg-zinc-100 text-zinc-950"
++                : "border border-zinc-800 text-zinc-400",
++            )}
++          >
++            Novo cadastro
++          </button>
++        </div>
++        {mode === "existing" ? (
++          <label className="mt-4 block text-xs text-zinc-400">
++            {scope === "other" ? "Quem vai para o destino" : "Membro da equipe"}
++            <select
++              value={selectedUserId}
++              onChange={(event) => setSelectedUserId(event.target.value)}
++              disabled={loadingStaff || busy}
++              className="mt-1 h-10 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 text-sm text-zinc-100 disabled:opacity-60"
++            >
++              <option value="">
++                {loadingStaff ? "Carregando..." : "Selecione..."}
++              </option>
++              {eligibleStaff.map((user) => (
++                <option key={user.id} value={user.id}>
++                  {user.name}
++                  {user.email ? ` · ${user.email}` : ""}
++                </option>
++              ))}
++            </select>
++          </label>
++        ) : (
++          <div className="mt-4 grid gap-3">
++            <Field label="Nome" value={newName} onChange={setNewName} />
++            <Field
++              label="E-mail"
++              value={newEmail}
++              onChange={setNewEmail}
++              type="email"
++            />
++            <Field label="Telefone" value={newPhone} onChange={setNewPhone} />
++          </div>
++        )}
++        <div className="mt-6 flex justify-end gap-2">
++          <button
++            type="button"
++            onClick={onClose}
++            disabled={busy}
++            className="rounded-full px-4 py-2 text-sm text-zinc-400 disabled:opacity-60"
++          >
++            Cancelar
++          </button>
++          <button
++            type="submit"
++            disabled={busy}
++            className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-60"
++          >
++            {busy ? "Transferindo..." : "Confirmar troca"}
++          </button>
++        </div>
++      </form>
++    </div>
++  );
++}
++
+ function WhatsappStepChecklist({
+   tenant,
+   partnerId,
+diff --git a/services/api.ts b/services/api.ts
+index 9d7a425..1fa90b0 100644
+--- a/services/api.ts
++++ b/services/api.ts
+@@ -91,6 +91,9 @@ export type ApiPartnerContract = {
+   acceptedByName: string | null;
+   acceptedByEmail: string | null;
+   createdAt: string;
++  docusignEnvelopeId?: string | null;
++  docusignStatus?: string | null;
++  signedDocumentUrl?: string | null;
+ };
+ 
+ export type ApiPlatformPlan = "SOLO" | "ESSENCIAL" | "CRESCIMENTO" | "REDE";
+@@ -1115,6 +1118,7 @@ export type ApiClient = {
+   city: string | null;
+   state: string | null;
+   avatarUrl: string | null;
++  isActive: boolean;
+   createdAt: string;
+ };
+ 
+@@ -1194,6 +1198,35 @@ export type CreateClientPayload = {
+   notes?: string | null;
+ };
+ 
++export type UpdateClientPayload = {
++  name?: string;
++  phone?: string;
++  email?: string | null;
++  birthDate?: string | null;
++  notes?: string | null;
++  isActive?: boolean;
++};
++
++export type CreateUnitPayload = {
++  name: string;
++  slug: string;
++  document: string;
++  whatsapp: string;
++  ownerName: string;
++  ownerEmail: string;
++  ownerPhone: string;
++  parentTenantId?: string;
++};
++
++export type TransferOwnerPayload = {
++  newOwnerUserId?: string;
++  name?: string;
++  email?: string;
++  phone?: string;
++  /** Super-Admin: mover o gestor deste salão para outro tenant */
++  toTenantId?: string;
++};
++
+ export type CreateClientHistoryPayload = {
+   tenantId?: string;
+   appointmentId?: string | null;
+@@ -1983,6 +2016,49 @@ export const api = {
+     );
+   },
+ 
++  resendSuperAdminPartnerContract(tenantId: string, contractId: string) {
++    return request<ApiPartnerContract>(
++      `/super-admin/tenants/${tenantId}/contracts/${contractId}/resend`,
++      { method: "POST", body: {} },
++    );
++  },
++
++  transferSuperAdminTenantOwner(
++    tenantId: string,
++    payload: TransferOwnerPayload,
++  ) {
++    return request<{
++      ownerUserId: string;
++      previousOwnerUserId: string | null;
++      user: {
++        id: string;
++        name: string;
++        email: string | null;
++        phone: string;
++        role: ApiUserRole;
++      };
++    }>(`/super-admin/tenants/${tenantId}/transfer-owner`, {
++      method: "POST",
++      body: payload,
++    });
++  },
++
++  getSuperAdminTenantBranches(tenantId: string) {
++    return request<ApiManagementUnit[]>(
++      `/super-admin/tenants/${tenantId}/branches`,
++    );
++  },
++
++  createSuperAdminTenantBranch(
++    tenantId: string,
++    payload: CreateUnitPayload,
++  ) {
++    return request<ApiManagementUnit>(
++      `/super-admin/tenants/${tenantId}/branches`,
++      { method: "POST", body: payload },
++    );
++  },
++
+   updateSuperAdminTenantStatus(id: string, status: TenantLifecycleStatus) {
+     return request<ApiPlatformTenant>(`/super-admin/tenants/${id}/status`, {
+       method: "PATCH",
+@@ -2353,6 +2429,24 @@ export const api = {
+     );
+   },
+ 
++  createUnit(payload: CreateUnitPayload) {
++    return request<ApiManagementUnit>("/management/units", {
++      method: "POST",
++      body: payload,
++    });
++  },
++
++  transferOwner(payload: TransferOwnerPayload) {
++    return request<{
++      ownerUserId: string;
++      previousOwnerUserId: string | null;
++      user: ApiUser;
++    }>("/users/transfer-owner", {
++      method: "POST",
++      body: payload,
++    });
++  },
++
+   getGoals(params: {
+     tenantId: string;
+     professionalId?: string;
+@@ -2376,11 +2470,16 @@ export const api = {
+     });
+   },
+ 
+-  getClients(params: { tenantId: string; q?: string }) {
++  getClients(params: {
++    tenantId: string;
++    q?: string;
++    includeInactive?: boolean;
++  }) {
+     return request<ApiClient[]>(
+       `/clients${buildQuery({
+         tenantId: params.tenantId,
+         q: params.q,
++        includeInactive: params.includeInactive ? "true" : undefined,
+       })}`,
+     );
+   },
+@@ -2412,6 +2511,33 @@ export const api = {
+     });
+   },
+ 
++  updateClient(id: string, payload: UpdateClientPayload) {
++    return request<ApiClient>(`/clients/${id}`, {
++      method: "PATCH",
++      body: payload,
++    });
++  },
++
++  deactivateClient(id: string) {
++    return request<ApiClient>(`/clients/${id}/deactivate`, {
++      method: "POST",
++      body: {},
++    });
++  },
++
++  reactivateClient(id: string) {
++    return request<ApiClient>(`/clients/${id}/reactivate`, {
++      method: "POST",
++      body: {},
++    });
++  },
++
++  deleteClient(id: string) {
++    return request<{ ok: true }>(`/clients/${id}`, {
++      method: "DELETE",
++    });
++  },
++
+   getClientHistory(id: string) {
+     return request<ApiClientHistoryItem[]>(`/clients/${id}/history`);
+   },

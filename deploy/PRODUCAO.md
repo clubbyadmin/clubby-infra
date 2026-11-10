@@ -204,6 +204,20 @@ Asaas (só se o clube online entrar no piloto):
 - `ASAAS_API_URL` = URL **de produção** (não sandbox)
 - `ASAAS_WEBHOOK_TOKEN`
 
+DocuSign (contratos SaaS do parceiro — assinatura por e-mail):
+
+- `DOCUSIGN_INTEGRATION_KEY`
+- `DOCUSIGN_USER_ID`
+- `DOCUSIGN_ACCOUNT_ID`
+- `DOCUSIGN_RSA_PRIVATE_KEY` (chave RSA da JWT grant; multilinha no `.env` entre aspas)
+- `DOCUSIGN_BASE_URL` — demo: `https://demo.docusign.net/restapi`; produção: base da conta (ex. `https://na3.docusign.net/restapi`)
+- `DOCUSIGN_WEBHOOK_SECRET` — HMAC do Connect / webhook `envelope-completed`
+
+Webhook que a API deve expor (após o módulo em `clubby-api`):  
+`https://api.clubby.com.br/docusign/webhook`
+
+Sem essas variáveis, o Super-Admin continua com **Registrar aceite** manual (útil em demo). Com DocuSign ativo em produção, a emissão cria o envelope e o aceite passa a vir do webhook.
+
 ### Front (Vercel · produção)
 
 Já listado na seção 4. Não coloque segredos SMTP/JWT no front.
