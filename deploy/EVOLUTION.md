@@ -31,7 +31,8 @@ EVOLUTION_API_KEY=COLE_AQUI_A_CHAVE_GERADA
 EVOLUTION_DB_PASSWORD=COLE_AQUI_OUTRA_SENHA
 EVOLUTION_SERVER_URL=https://evolution.clubby.com.br
 EVOLUTION_API_URL=http://evolution-api:8080
-WHATSAPP_INBOUND_URL=https://api.clubby.com.br/whatsapp/inbound
+# Preferir URL interna Docker (Evolution → API no mesmo VPS):
+WHATSAPP_INBOUND_URL=http://api:3000/whatsapp/inbound
 ```
 
 Salve (`Ctrl+O`, Enter, `Ctrl+X`).
