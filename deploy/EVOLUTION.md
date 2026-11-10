@@ -81,5 +81,6 @@ docker compose --env-file deploy/.env exec api \
 | --- | --- |
 | `No host part in the URL` | `EVOLUTION_API_URL` vazia no shell / `.env` |
 | `fetch failed` | Evolution ainda não subiu ou DNS sem `evolution.` |
+| `pull access denied` / `atendai/evolution-api` | Imagem antiga; use `evoapicloud/evolution-api:v2.3.7` (já no compose) |
 | Caddy 502 em evolution. | Profile `whatsapp` não foi usado no `up` |
 | QR não gera | API Clubby antiga — faça `--build api` de novo |
