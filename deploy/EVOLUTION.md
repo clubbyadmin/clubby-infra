@@ -79,8 +79,9 @@ Deve responder o welcome da Evolution.
 2. Clique **Conectar WhatsApp**
 3. Escaneie o QR com o celular do estabelecimento
 4. Status vira **Conectado**
-5. Clique **Ativar respostas automáticas** (liga o webhook Evolution → Clubby)
+5. Clique **Ativar respostas** (liga o webhook Evolution → Clubby)
 6. Teste mandando “oi” de outro celular para o WhatsApp do salão
+7. Para parar o bot, clique **Desativar respostas** (e use **Salvar avisos** para ligar/desligar confirmação, lembrete etc.)
 
 No `deploy/.env`, use preferencialmente:
 
