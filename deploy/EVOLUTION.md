@@ -81,7 +81,8 @@ Deve responder o welcome da Evolution.
 4. Status vira **Conectado**
 5. Clique **Ativar respostas** (liga o webhook Evolution → Clubby)
 6. Teste mandando “oi” de outro celular para o WhatsApp do salão
-7. Para parar o bot, clique **Desativar respostas** (e use **Salvar avisos** para ligar/desligar confirmação, lembrete etc.)
+7. Fluxo do bot: identifica o telefone no cadastro → se for novo, confirma o nome do WhatsApp, pede e-mail e consentimento LGPD → lista serviços → agenda
+8. Para parar o bot, clique **Desativar respostas** (e use **Salvar avisos** para ligar/desligar confirmação, lembrete etc.)
 
 No `deploy/.env`, use preferencialmente:
 
