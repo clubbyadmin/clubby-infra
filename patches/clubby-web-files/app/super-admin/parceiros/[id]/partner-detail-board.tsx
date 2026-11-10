@@ -767,7 +767,7 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
 
           <Section
             title="Filiais"
-            description="Unidades vinculadas a esta matriz. Cada filial tem ficha própria no painel."
+            description="Clientes e catálogo ficam na matriz (compartilhados). Agenda, equipe e WhatsApp são por unidade."
           >
             {branchesLoading ? (
               <p className="text-sm text-zinc-500">Carregando filiais...</p>
@@ -1233,10 +1233,14 @@ function TransferManagerModal({
   onSuccess: (message: string) => void | Promise<void>;
   setBusy: (value: boolean) => void;
 }) {
+  const [scope, setScope] = useState<"same" | "other">("same");
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [staff, setStaff] = useState<ApiUser[]>([]);
+  const [tenants, setTenants] = useState<ApiPlatformTenant[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
+  const [loadingTenants, setLoadingTenants] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [toTenantId, setToTenantId] = useState("");
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
@@ -1267,6 +1271,34 @@ function TransferManagerModal({
     };
   }, [partnerId]);
 
+  useEffect(() => {
+    if (scope !== "other") {
+      return;
+    }
+    let cancelled = false;
+    setLoadingTenants(true);
+    void api
+      .getSuperAdminTenants()
+      .then((list) => {
+        if (!cancelled) {
+          setTenants(list.filter((item) => item.id !== partnerId));
+        }
+      })
+      .catch((requestError) => {
+        if (!cancelled) {
+          setFormError(getErrorMessage(requestError));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingTenants(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [partnerId, scope]);
+
   const eligibleStaff = useMemo(
     () => staff.filter((user) => user.id !== tenant.owner?.id),
     [staff, tenant.owner?.id],
@@ -1277,7 +1309,16 @@ function TransferManagerModal({
     setBusy(true);
     setFormError(null);
     try {
-      if (mode === "existing") {
+      if (scope === "other" && !toTenantId) {
+        setFormError("Selecione o salão de destino.");
+        setBusy(false);
+        return;
+      }
+
+      const destination =
+        scope === "other" ? { toTenantId } : ({} as { toTenantId?: string });
+
+      if (scope === "same" && mode === "existing") {
         if (!selectedUserId) {
           setFormError("Selecione um membro da equipe.");
           setBusy(false);
@@ -1286,6 +1327,18 @@ function TransferManagerModal({
         await api.transferSuperAdminTenantOwner(partnerId, {
           newOwnerUserId: selectedUserId,
         });
+        await onSuccess("Gestor atualizado neste salão.");
+      } else if (scope === "other" && mode === "existing") {
+        if (!selectedUserId) {
+          setFormError("Selecione quem será o gestor no destino.");
+          setBusy(false);
+          return;
+        }
+        await api.transferSuperAdminTenantOwner(partnerId, {
+          newOwnerUserId: selectedUserId,
+          ...destination,
+        });
+        await onSuccess("Gestor movido para o outro salão.");
       } else {
         if (!newName.trim() || !newEmail.trim() || !newPhone.trim()) {
           setFormError("Preencha nome, e-mail e telefone do novo gestor.");
@@ -1296,9 +1349,14 @@ function TransferManagerModal({
           name: newName.trim(),
           email: newEmail.trim(),
           phone: newPhone.trim(),
+          ...destination,
         });
+        await onSuccess(
+          scope === "other"
+            ? "Novo gestor criado no salão de destino."
+            : "Gestor atualizado neste salão.",
+        );
       }
-      await onSuccess("Gestor atualizado.");
     } catch (requestError) {
       setFormError(getErrorMessage(requestError));
     } finally {
@@ -1320,26 +1378,77 @@ function TransferManagerModal({
         {formError ? (
           <p className="mt-3 text-sm text-red-300">{formError}</p>
         ) : null}
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => setMode("existing")}
+            onClick={() => setScope("same")}
             className={cn(
               "rounded-full px-3 py-1.5 text-xs font-semibold",
-              mode === "existing"
+              scope === "same"
                 ? "bg-amber-300 text-zinc-950"
                 : "border border-zinc-800 text-zinc-400",
             )}
           >
-            Da equipe
+            Neste salão
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setScope("other");
+              setMode("new");
+            }}
+            className={cn(
+              "rounded-full px-3 py-1.5 text-xs font-semibold",
+              scope === "other"
+                ? "bg-amber-300 text-zinc-950"
+                : "border border-zinc-800 text-zinc-400",
+            )}
+          >
+            Para outro salão
+          </button>
+        </div>
+        {scope === "other" ? (
+          <label className="mt-4 block text-xs text-zinc-400">
+            Salão de destino
+            <select
+              value={toTenantId}
+              onChange={(event) => setToTenantId(event.target.value)}
+              disabled={loadingTenants || busy}
+              className="mt-1 h-10 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 text-sm text-zinc-100 disabled:opacity-60"
+            >
+              <option value="">
+                {loadingTenants ? "Carregando..." : "Selecione..."}
+              </option>
+              {tenants.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name} · {item.slug}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <div className="mt-4 flex gap-2">
+          {scope === "same" || staff.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setMode("existing")}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-xs font-semibold",
+                mode === "existing"
+                  ? "bg-zinc-100 text-zinc-950"
+                  : "border border-zinc-800 text-zinc-400",
+              )}
+            >
+              {scope === "other" ? "Mover da equipe atual" : "Da equipe"}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setMode("new")}
             className={cn(
               "rounded-full px-3 py-1.5 text-xs font-semibold",
               mode === "new"
-                ? "bg-amber-300 text-zinc-950"
+                ? "bg-zinc-100 text-zinc-950"
                 : "border border-zinc-800 text-zinc-400",
             )}
           >
@@ -1348,7 +1457,7 @@ function TransferManagerModal({
         </div>
         {mode === "existing" ? (
           <label className="mt-4 block text-xs text-zinc-400">
-            Membro da equipe
+            {scope === "other" ? "Quem vai para o destino" : "Membro da equipe"}
             <select
               value={selectedUserId}
               onChange={(event) => setSelectedUserId(event.target.value)}

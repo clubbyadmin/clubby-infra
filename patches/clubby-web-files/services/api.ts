@@ -1223,6 +1223,8 @@ export type TransferOwnerPayload = {
   name?: string;
   email?: string;
   phone?: string;
+  /** Super-Admin: mover o gestor deste salão para outro tenant */
+  toTenantId?: string;
 };
 
 export type CreateClientHistoryPayload = {

@@ -1,5 +1,5 @@
 diff --git a/app/admin/clientes/clientes-board.tsx b/app/admin/clientes/clientes-board.tsx
-index 06f00c5..0923eac 100644
+index 06f00c5..fc04120 100644
 --- a/app/admin/clientes/clientes-board.tsx
 +++ b/app/admin/clientes/clientes-board.tsx
 @@ -23,9 +23,13 @@ import {
@@ -113,7 +113,17 @@ index 06f00c5..0923eac 100644
    async function handleCreateReminder(event: React.FormEvent<HTMLFormElement>) {
      event.preventDefault();
  
-@@ -544,7 +568,9 @@ export function ClientesBoard() {
+@@ -451,7 +475,8 @@ export function ClientesBoard() {
+         <div>
+           <TenantBadge />
+           <p className="mt-3 text-sm text-zinc-400">
+-            Ficha, histórico e lembretes · {tenant.name}
++            Ficha, histórico e lembretes · {tenant.name}. Em rede, a base de
++            clientes é da matriz e vale em todas as unidades.
+           </p>
+         </div>
+ 
+@@ -544,7 +569,9 @@ export function ClientesBoard() {
              <ClientsSection
                clients={clients}
                search={search}
@@ -123,7 +133,7 @@ index 06f00c5..0923eac 100644
                onOpen={openHistory}
              />
            ) : (
-@@ -593,6 +619,8 @@ export function ClientesBoard() {
+@@ -593,6 +620,8 @@ export function ClientesBoard() {
            onReminderChange={setReminderForm}
            onSubmitHistory={handleCreateHistory}
            onSubmitReminder={handleCreateReminder}
@@ -132,7 +142,7 @@ index 06f00c5..0923eac 100644
            onClose={() => setSelectedClient(null)}
          />
        ) : null}
-@@ -603,22 +631,37 @@ export function ClientesBoard() {
+@@ -603,22 +632,37 @@ export function ClientesBoard() {
  function ClientsSection({
    clients,
    search,
@@ -175,7 +185,7 @@ index 06f00c5..0923eac 100644
          </div>
  
          <label className="relative block w-full lg:max-w-sm">
-@@ -658,7 +701,12 @@ function ClientsSection({
+@@ -658,7 +702,12 @@ function ClientsSection({
                      onClick={() => onOpen(client)}
                    >
                      <td className="py-3 pr-4 font-medium text-zinc-100">
@@ -189,7 +199,7 @@ index 06f00c5..0923eac 100644
                      </td>
                      <td className="py-3 pr-4 text-zinc-300">
                        {formatPhone(client.phone)}
-@@ -697,8 +745,9 @@ function ClientsSection({
+@@ -697,8 +746,9 @@ function ClientsSection({
                >
                  <div className="flex items-start justify-between gap-3">
                    <div className="min-w-0">
@@ -201,7 +211,7 @@ index 06f00c5..0923eac 100644
                      </p>
                      <p className="mt-1 text-xs text-zinc-400">
                        {formatPhone(client.phone)}
-@@ -811,6 +860,9 @@ function ClientModal({
+@@ -811,6 +861,9 @@ function ClientModal({
    form,
    submitting,
    error,
@@ -211,7 +221,7 @@ index 06f00c5..0923eac 100644
    onClose,
    onChange,
    onSubmit,
-@@ -818,17 +870,25 @@ function ClientModal({
+@@ -818,17 +871,25 @@ function ClientModal({
    form: ClientFormState;
    submitting: boolean;
    error: string | null;
@@ -241,7 +251,7 @@ index 06f00c5..0923eac 100644
            <button
              type="button"
              onClick={onClose}
-@@ -917,7 +977,7 @@ function ClientModal({
+@@ -917,7 +978,7 @@ function ClientModal({
              disabled={submitting}
              className="w-full rounded-2xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-strong)] px-4 py-3 text-sm font-semibold text-zinc-950 disabled:opacity-50"
            >
@@ -250,7 +260,7 @@ index 06f00c5..0923eac 100644
            </button>
          </form>
        </div>
-@@ -941,6 +1001,8 @@ function HistoryDrawer({
+@@ -941,6 +1002,8 @@ function HistoryDrawer({
    onReminderChange,
    onSubmitHistory,
    onSubmitReminder,
@@ -259,7 +269,7 @@ index 06f00c5..0923eac 100644
    onClose,
  }: {
    client: ApiClient;
-@@ -958,8 +1020,112 @@ function HistoryDrawer({
+@@ -958,8 +1021,112 @@ function HistoryDrawer({
    onReminderChange: React.Dispatch<React.SetStateAction<ReminderFormState>>;
    onSubmitHistory: (event: React.FormEvent<HTMLFormElement>) => void;
    onSubmitReminder: (event: React.FormEvent<HTMLFormElement>) => void;
@@ -372,7 +382,7 @@ index 06f00c5..0923eac 100644
    return (
      <div className="fixed inset-0 z-[110] flex justify-end bg-black/70">
        <button
-@@ -976,9 +1142,12 @@ function HistoryDrawer({
+@@ -976,9 +1143,12 @@ function HistoryDrawer({
                  <UserRound className="size-5" />
                </AccentIconWrap>
                <div className="min-w-0">
@@ -388,7 +398,7 @@ index 06f00c5..0923eac 100644
                  <p className="mt-1 text-xs text-zinc-400">
                    {formatPhone(client.phone)}
                    {client.email ? ` · ${client.email}` : ""}
-@@ -994,6 +1163,85 @@ function HistoryDrawer({
+@@ -994,6 +1164,85 @@ function HistoryDrawer({
                <X className="size-4" />
              </button>
            </div>
@@ -474,7 +484,7 @@ index 06f00c5..0923eac 100644
          </div>
  
          <div className="space-y-6 px-5 py-5">
-@@ -1257,11 +1505,112 @@ function HistoryDrawer({
+@@ -1257,11 +1506,112 @@ function HistoryDrawer({
              </form>
            </section>
          </div>
@@ -588,7 +598,7 @@ index 06f00c5..0923eac 100644
    label,
    value,
 diff --git a/app/admin/gestao/gestao-board.tsx b/app/admin/gestao/gestao-board.tsx
-index 5d02156..a7b30d2 100644
+index 5d02156..b2602d8 100644
 --- a/app/admin/gestao/gestao-board.tsx
 +++ b/app/admin/gestao/gestao-board.tsx
 @@ -65,6 +65,16 @@ type GoalFormState = {
@@ -781,7 +791,17 @@ index 5d02156..a7b30d2 100644
      </div>
    );
  }
-@@ -840,6 +966,189 @@ function initialGoalForm(): GoalFormState {
+@@ -423,7 +549,8 @@ function UnitSelector({
+           </h2>
+         </div>
+         <p className="text-xs text-zinc-500">
+-          {units.length} unidade{units.length === 1 ? "" : "s"} sob gestão
++          {units.length} unidade{units.length === 1 ? "" : "s"} · clientes e
++          catálogo compartilhados da matriz
+         </p>
+       </div>
+ 
+@@ -840,6 +967,189 @@ function initialGoalForm(): GoalFormState {
    };
  }
  
@@ -1286,7 +1306,7 @@ index faa1690..dc03b59 100644
    mode,
    accountId,
 diff --git a/app/super-admin/parceiros/[id]/partner-detail-board.tsx b/app/super-admin/parceiros/[id]/partner-detail-board.tsx
-index f910ec8..86b953a 100644
+index f910ec8..7043a87 100644
 --- a/app/super-admin/parceiros/[id]/partner-detail-board.tsx
 +++ b/app/super-admin/parceiros/[id]/partner-detail-board.tsx
 @@ -12,6 +12,7 @@ import {
@@ -1451,7 +1471,7 @@ index f910ec8..86b953a 100644
  
 +          <Section
 +            title="Filiais"
-+            description="Unidades vinculadas a esta matriz. Cada filial tem ficha própria no painel."
++            description="Clientes e catálogo ficam na matriz (compartilhados). Agenda, equipe e WhatsApp são por unidade."
 +          >
 +            {branchesLoading ? (
 +              <p className="text-sm text-zinc-500">Carregando filiais...</p>
@@ -1637,7 +1657,7 @@ index f910ec8..86b953a 100644
        {previewHtml ? (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
            <div className="flex h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-zinc-700 bg-zinc-950">
-@@ -976,6 +1218,188 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
+@@ -976,6 +1218,297 @@ export function PartnerDetailBoard({ partnerId }: { partnerId: string }) {
    );
  }
  
@@ -1656,10 +1676,14 @@ index f910ec8..86b953a 100644
 +  onSuccess: (message: string) => void | Promise<void>;
 +  setBusy: (value: boolean) => void;
 +}) {
++  const [scope, setScope] = useState<"same" | "other">("same");
 +  const [mode, setMode] = useState<"existing" | "new">("existing");
 +  const [staff, setStaff] = useState<ApiUser[]>([]);
++  const [tenants, setTenants] = useState<ApiPlatformTenant[]>([]);
 +  const [loadingStaff, setLoadingStaff] = useState(true);
++  const [loadingTenants, setLoadingTenants] = useState(false);
 +  const [selectedUserId, setSelectedUserId] = useState("");
++  const [toTenantId, setToTenantId] = useState("");
 +  const [newName, setNewName] = useState("");
 +  const [newEmail, setNewEmail] = useState("");
 +  const [newPhone, setNewPhone] = useState("");
@@ -1690,6 +1714,34 @@ index f910ec8..86b953a 100644
 +    };
 +  }, [partnerId]);
 +
++  useEffect(() => {
++    if (scope !== "other") {
++      return;
++    }
++    let cancelled = false;
++    setLoadingTenants(true);
++    void api
++      .getSuperAdminTenants()
++      .then((list) => {
++        if (!cancelled) {
++          setTenants(list.filter((item) => item.id !== partnerId));
++        }
++      })
++      .catch((requestError) => {
++        if (!cancelled) {
++          setFormError(getErrorMessage(requestError));
++        }
++      })
++      .finally(() => {
++        if (!cancelled) {
++          setLoadingTenants(false);
++        }
++      });
++    return () => {
++      cancelled = true;
++    };
++  }, [partnerId, scope]);
++
 +  const eligibleStaff = useMemo(
 +    () => staff.filter((user) => user.id !== tenant.owner?.id),
 +    [staff, tenant.owner?.id],
@@ -1700,7 +1752,16 @@ index f910ec8..86b953a 100644
 +    setBusy(true);
 +    setFormError(null);
 +    try {
-+      if (mode === "existing") {
++      if (scope === "other" && !toTenantId) {
++        setFormError("Selecione o salão de destino.");
++        setBusy(false);
++        return;
++      }
++
++      const destination =
++        scope === "other" ? { toTenantId } : ({} as { toTenantId?: string });
++
++      if (scope === "same" && mode === "existing") {
 +        if (!selectedUserId) {
 +          setFormError("Selecione um membro da equipe.");
 +          setBusy(false);
@@ -1709,6 +1770,18 @@ index f910ec8..86b953a 100644
 +        await api.transferSuperAdminTenantOwner(partnerId, {
 +          newOwnerUserId: selectedUserId,
 +        });
++        await onSuccess("Gestor atualizado neste salão.");
++      } else if (scope === "other" && mode === "existing") {
++        if (!selectedUserId) {
++          setFormError("Selecione quem será o gestor no destino.");
++          setBusy(false);
++          return;
++        }
++        await api.transferSuperAdminTenantOwner(partnerId, {
++          newOwnerUserId: selectedUserId,
++          ...destination,
++        });
++        await onSuccess("Gestor movido para o outro salão.");
 +      } else {
 +        if (!newName.trim() || !newEmail.trim() || !newPhone.trim()) {
 +          setFormError("Preencha nome, e-mail e telefone do novo gestor.");
@@ -1719,9 +1792,14 @@ index f910ec8..86b953a 100644
 +          name: newName.trim(),
 +          email: newEmail.trim(),
 +          phone: newPhone.trim(),
++          ...destination,
 +        });
++        await onSuccess(
++          scope === "other"
++            ? "Novo gestor criado no salão de destino."
++            : "Gestor atualizado neste salão.",
++        );
 +      }
-+      await onSuccess("Gestor atualizado.");
 +    } catch (requestError) {
 +      setFormError(getErrorMessage(requestError));
 +    } finally {
@@ -1743,26 +1821,77 @@ index f910ec8..86b953a 100644
 +        {formError ? (
 +          <p className="mt-3 text-sm text-red-300">{formError}</p>
 +        ) : null}
-+        <div className="mt-4 flex gap-2">
++        <div className="mt-4 flex flex-wrap gap-2">
 +          <button
 +            type="button"
-+            onClick={() => setMode("existing")}
++            onClick={() => setScope("same")}
 +            className={cn(
 +              "rounded-full px-3 py-1.5 text-xs font-semibold",
-+              mode === "existing"
++              scope === "same"
 +                ? "bg-amber-300 text-zinc-950"
 +                : "border border-zinc-800 text-zinc-400",
 +            )}
 +          >
-+            Da equipe
++            Neste salão
 +          </button>
++          <button
++            type="button"
++            onClick={() => {
++              setScope("other");
++              setMode("new");
++            }}
++            className={cn(
++              "rounded-full px-3 py-1.5 text-xs font-semibold",
++              scope === "other"
++                ? "bg-amber-300 text-zinc-950"
++                : "border border-zinc-800 text-zinc-400",
++            )}
++          >
++            Para outro salão
++          </button>
++        </div>
++        {scope === "other" ? (
++          <label className="mt-4 block text-xs text-zinc-400">
++            Salão de destino
++            <select
++              value={toTenantId}
++              onChange={(event) => setToTenantId(event.target.value)}
++              disabled={loadingTenants || busy}
++              className="mt-1 h-10 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 text-sm text-zinc-100 disabled:opacity-60"
++            >
++              <option value="">
++                {loadingTenants ? "Carregando..." : "Selecione..."}
++              </option>
++              {tenants.map((item) => (
++                <option key={item.id} value={item.id}>
++                  {item.name} · {item.slug}
++                </option>
++              ))}
++            </select>
++          </label>
++        ) : null}
++        <div className="mt-4 flex gap-2">
++          {scope === "same" || staff.length > 0 ? (
++            <button
++              type="button"
++              onClick={() => setMode("existing")}
++              className={cn(
++                "rounded-full px-3 py-1.5 text-xs font-semibold",
++                mode === "existing"
++                  ? "bg-zinc-100 text-zinc-950"
++                  : "border border-zinc-800 text-zinc-400",
++              )}
++            >
++              {scope === "other" ? "Mover da equipe atual" : "Da equipe"}
++            </button>
++          ) : null}
 +          <button
 +            type="button"
 +            onClick={() => setMode("new")}
 +            className={cn(
 +              "rounded-full px-3 py-1.5 text-xs font-semibold",
 +              mode === "new"
-+                ? "bg-amber-300 text-zinc-950"
++                ? "bg-zinc-100 text-zinc-950"
 +                : "border border-zinc-800 text-zinc-400",
 +            )}
 +          >
@@ -1771,7 +1900,7 @@ index f910ec8..86b953a 100644
 +        </div>
 +        {mode === "existing" ? (
 +          <label className="mt-4 block text-xs text-zinc-400">
-+            Membro da equipe
++            {scope === "other" ? "Quem vai para o destino" : "Membro da equipe"}
 +            <select
 +              value={selectedUserId}
 +              onChange={(event) => setSelectedUserId(event.target.value)}
@@ -1827,7 +1956,7 @@ index f910ec8..86b953a 100644
    tenant,
    partnerId,
 diff --git a/services/api.ts b/services/api.ts
-index 9d7a425..8e563ad 100644
+index 9d7a425..1fa90b0 100644
 --- a/services/api.ts
 +++ b/services/api.ts
 @@ -91,6 +91,9 @@ export type ApiPartnerContract = {
@@ -1848,7 +1977,7 @@ index 9d7a425..8e563ad 100644
    createdAt: string;
  };
  
-@@ -1194,6 +1198,33 @@ export type CreateClientPayload = {
+@@ -1194,6 +1198,35 @@ export type CreateClientPayload = {
    notes?: string | null;
  };
  
@@ -1877,12 +2006,14 @@ index 9d7a425..8e563ad 100644
 +  name?: string;
 +  email?: string;
 +  phone?: string;
++  /** Super-Admin: mover o gestor deste salão para outro tenant */
++  toTenantId?: string;
 +};
 +
  export type CreateClientHistoryPayload = {
    tenantId?: string;
    appointmentId?: string | null;
-@@ -1983,6 +2014,49 @@ export const api = {
+@@ -1983,6 +2016,49 @@ export const api = {
      );
    },
  
@@ -1932,7 +2063,7 @@ index 9d7a425..8e563ad 100644
    updateSuperAdminTenantStatus(id: string, status: TenantLifecycleStatus) {
      return request<ApiPlatformTenant>(`/super-admin/tenants/${id}/status`, {
        method: "PATCH",
-@@ -2353,6 +2427,24 @@ export const api = {
+@@ -2353,6 +2429,24 @@ export const api = {
      );
    },
  
@@ -1957,7 +2088,7 @@ index 9d7a425..8e563ad 100644
    getGoals(params: {
      tenantId: string;
      professionalId?: string;
-@@ -2376,11 +2468,16 @@ export const api = {
+@@ -2376,11 +2470,16 @@ export const api = {
      });
    },
  
@@ -1975,7 +2106,7 @@ index 9d7a425..8e563ad 100644
        })}`,
      );
    },
-@@ -2412,6 +2509,33 @@ export const api = {
+@@ -2412,6 +2511,33 @@ export const api = {
      });
    },
  

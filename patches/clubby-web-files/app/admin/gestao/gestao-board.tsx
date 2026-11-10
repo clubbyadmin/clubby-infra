@@ -549,7 +549,8 @@ function UnitSelector({
           </h2>
         </div>
         <p className="text-xs text-zinc-500">
-          {units.length} unidade{units.length === 1 ? "" : "s"} sob gestão
+          {units.length} unidade{units.length === 1 ? "" : "s"} · clientes e
+          catálogo compartilhados da matriz
         </p>
       </div>
 

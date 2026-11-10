@@ -475,7 +475,8 @@ export function ClientesBoard() {
         <div>
           <TenantBadge />
           <p className="mt-3 text-sm text-zinc-400">
-            Ficha, histórico e lembretes · {tenant.name}
+            Ficha, histórico e lembretes · {tenant.name}. Em rede, a base de
+            clientes é da matriz e vale em todas as unidades.
           </p>
         </div>
 
