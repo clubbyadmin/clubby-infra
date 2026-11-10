@@ -9,7 +9,7 @@ Demonstração (`demo.` / `api-demo.`) fica isolada e não compartilha banco.
 
 | Peça | URL | Onde roda |
 | --- | --- | --- |
-| Portal do cliente / gestão | `https://app.clubby.com.br` | Vercel · projeto `clubby-web` |
+| Portal Clubby (acesso) | `https://app.clubby.com.br` | Vercel · projeto `clubby-web` · não é vitrine de salão |
 | API de produção | `https://api.clubby.com.br` | Lightsail · container `api` |
 | Evolution (WhatsApp) | `https://evolution.clubby.com.br` | Lightsail · profile `whatsapp` · ver `deploy/EVOLUTION.md` |
 | Super-admin (plataforma) | `https://app.clubby.com.br/super-admin` | mesmo front |
