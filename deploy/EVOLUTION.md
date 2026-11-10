@@ -78,6 +78,14 @@ Deve responder o welcome da Evolution.
 2. Clique **Conectar WhatsApp**
 3. Escaneie o QR com o celular do estabelecimento
 4. Status vira **Conectado**
+5. Clique **Ativar respostas automáticas** (liga o webhook Evolution → Clubby)
+6. Teste mandando “oi” de outro celular para o WhatsApp do salão
+
+No `deploy/.env`, use preferencialmente:
+
+```bash
+WHATSAPP_INBOUND_URL=http://api:3000/whatsapp/inbound
+```
 
 ## Troubleshooting
 
