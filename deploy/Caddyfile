@@ -14,4 +14,10 @@ api.{$CLUBBY_DOMAIN} {
 	reverse_proxy api:3000
 }
 
+# Evolution API (WhatsApp) — QR e envio ficam por trás; o salão usa só o Clubby
+evolution.{$CLUBBY_DOMAIN} {
+	encode gzip
+	reverse_proxy evolution-api:8080
+}
+
 # O front-end (demo. e app.) é servido pela Vercel, não passa por aqui.

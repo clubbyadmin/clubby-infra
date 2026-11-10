@@ -74,6 +74,66 @@ services:
       - "3000"
     restart: unless-stopped
 
+  evolution-postgres:
+    image: postgres:15-alpine
+    profiles: [whatsapp]
+    environment:
+      POSTGRES_DB: evolution
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD:-clubby-evolution-db}
+    volumes:
+      - clubby_evolution_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution -d evolution"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  evolution-redis:
+    image: redis:7-alpine
+    profiles: [whatsapp]
+    command: redis-server --appendonly yes
+    volumes:
+      - clubby_evolution_redis:/data
+    restart: unless-stopped
+
+  evolution-api:
+    image: atendai/evolution-api:v2.1.1
+    profiles: [whatsapp]
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_started
+    environment:
+      TZ: America/Sao_Paulo
+      SERVER_URL: ${EVOLUTION_SERVER_URL:-https://evolution.clubby.com.br}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-change-me-evolution}
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "true"
+      LANGUAGE: pt
+      DEL_INSTANCE: "false"
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${EVOLUTION_DB_PASSWORD:-clubby-evolution-db}@evolution-postgres:5432/evolution?schema=public
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://evolution-redis:6379/1
+      CACHE_REDIS_PREFIX_KEY: clubby_evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "false"
+      CONFIG_SESSION_PHONE_CLIENT: Clubby
+      CONFIG_SESSION_PHONE_NAME: Chrome
+    volumes:
+      - clubby_evolution_instances:/evolution/instances
+    expose:
+      - "8080"
+    restart: unless-stopped
+
   caddy:
     image: caddy:2-alpine
     profiles: [proxy]
@@ -93,3 +153,6 @@ volumes:
   clubby_demo_pg:
   clubby_caddy_data:
   clubby_caddy_config:
+  clubby_evolution_pg:
+  clubby_evolution_redis:
+  clubby_evolution_instances:
