@@ -50,23 +50,27 @@ docker compose --env-file deploy/.env \
 
 ## 4. Testar
 
-Pelo host (HTTPS público):
+**Não use `source deploy/.env`** se alguma senha tiver `"` `)` `>` — o bash quebra.
+Leia só a key da Evolution:
 
 ```bash
-set -a && source deploy/.env && set +a
-curl -sS -H "apikey: $EVOLUTION_API_KEY" \
-  "https://evolution.clubby.com.br"
+EVOLUTION_API_KEY=$(grep -E '^EVOLUTION_API_KEY=' deploy/.env | cut -d= -f2- | tr -d '"' | tr -d "'")
 ```
 
-Deve responder welcome da Evolution.
-
-Pela rede interna (como a API Clubby faz):
+Pelo host (HTTPS público — precisa do DNS `evolution.`):
 
 ```bash
-docker compose --env-file deploy/.env exec api \
-  wget -qO- --header="apikey: $EVOLUTION_API_KEY" \
-  http://evolution-api:8080/
+curl -sS -H "apikey: $EVOLUTION_API_KEY" "https://evolution.clubby.com.br"
 ```
+
+Pela rede interna (como a API Clubby faz; não depende de DNS):
+
+```bash
+docker run --rm --network clubby_default curlimages/curl:8.5.0 \
+  -sS -H "apikey: $EVOLUTION_API_KEY" http://evolution-api:8080/
+```
+
+Deve responder o welcome da Evolution.
 
 ## 5. Conectar o primeiro salão
 
